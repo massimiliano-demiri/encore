@@ -1,24 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 type Artist = { mbid: string; name: string; info: string }
 
-export default function SearchPage() {
-	const [q, setQ] = useState("")
+function SearchInner() {
+	const params = useSearchParams()
+	const initial = params.get("q") ?? ""
+	const [q, setQ] = useState(initial)
 	const [artists, setArtists] = useState<Artist[]>([])
 	const [loading, setLoading] = useState(false)
 
-	const search = async () => {
+	const search = async (term: string) => {
+		if (!term.trim()) return
 		setLoading(true)
-		const res = await fetch("/api/search-artists?q=" + encodeURIComponent(q))
+		const res = await fetch("/api/search-artists?q=" + encodeURIComponent(term))
 		const data = await res.json()
 		setArtists(data.artists)
 		setLoading(false)
 	}
+
+	useEffect(() => {
+		if (initial) search(initial)
+	}, [initial])
 
 	return (
 		<main className="mx-auto flex max-w-md flex-col gap-4 p-6">
@@ -28,9 +36,9 @@ export default function SearchPage() {
 					value={q}
 					onChange={(e) => setQ(e.target.value)}
 					placeholder="Es. Radiohead"
-					onKeyDown={(e) => e.key === "Enter" && search()}
+					onKeyDown={(e) => e.key === "Enter" && search(q)}
 				/>
-				<Button onClick={search}>Cerca</Button>
+				<Button onClick={() => search(q)}>Cerca</Button>
 			</div>
 			{loading && <p>Cerco…</p>}
 			<ul className="flex flex-col gap-2">
@@ -44,5 +52,13 @@ export default function SearchPage() {
 				))}
 			</ul>
 		</main>
+	)
+}
+
+export default function SearchPage() {
+	return (
+		<Suspense fallback={<main className="p-6">Carico…</main>}>
+			<SearchInner />
+		</Suspense>
 	)
 }
