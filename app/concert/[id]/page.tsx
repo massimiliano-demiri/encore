@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/skeleton"
 import { LogConcert } from "@/components/ui/log-concert"
 import { Setlist } from "@/components/setlist"
 import { ConcertPhotos } from "@/components/concert-photos"
+import { Star, ListMusic, MessageSquare } from "lucide-react"
 
 type Concert = {
 	id: string
@@ -25,6 +26,9 @@ type Review = {
 	profiles: { username: string | null; display_name: string | null } | null
 }
 
+const fmtDate = (d: string | null) =>
+	d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
+
 export default function ConcertPage() {
 	const { id } = useParams<{ id: string }>()
 	const supabase = createClient()
@@ -40,6 +44,7 @@ export default function ConcertPage() {
 				.eq("id", id)
 				.maybeSingle()
 			setConcert((c as unknown as Concert) ?? null)
+
 			const { data: r } = await supabase
 				.from("logs")
 				.select("id, rating, review, logged_at, profiles(username, display_name)")
@@ -58,8 +63,8 @@ export default function ConcertPage() {
 				<div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
 					<Skeleton className="h-10 w-24" />
 					<Skeleton className="h-5 w-32" />
-					<Skeleton className="h-20 w-full rounded-lg" />
-					<Skeleton className="h-20 w-full rounded-lg" />
+					<Skeleton className="h-24 w-full rounded-2xl" />
+					<Skeleton className="h-24 w-full rounded-2xl" />
 				</div>
 			</main>
 		)
@@ -78,58 +83,74 @@ export default function ConcertPage() {
 				<ArtistImage name={artist} className="absolute inset-0 h-full w-full" />
 				<div className="absolute inset-0 bg-gradient-to-t from-[#0E0E12] via-[#0E0E12]/60 to-transparent" />
 				<div className="absolute inset-x-0 bottom-0 mx-auto max-w-2xl p-6">
-					<h1 className="text-3xl font-bold text-white">{artist}</h1>
+					<p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[#FF2D6B]">Concerto</p>
+					<h1 className="text-3xl font-bold text-white [font-family:var(--font-display)]">{artist}</h1>
 					<p className="mt-1 text-white/70">
 						{concert.venues?.name}
 						{concert.venues?.city ? ", " + concert.venues.city : ""}
-						{concert.date ? " · " + concert.date : ""}
+						{concert.date ? " · " + fmtDate(concert.date) : ""}
 					</p>
 				</div>
 			</div>
 
 			<div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
-				<div className="flex items-center gap-3">
+				<div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
 					{avg ? (
 						<>
-							<span className="text-4xl font-bold text-[#FF2D6B]">{avg}</span>
-							<span className="text-sm text-muted-foreground">
+							<div className="flex items-baseline gap-1">
+								<span className="text-4xl font-bold text-[#FF2D6B] [font-family:var(--font-display)]">{avg}</span>
+								<span className="text-white/40">/5</span>
+							</div>
+							<span className="text-sm text-white/50">
 								media su {rated.length} {rated.length === 1 ? "voto" : "voti"}
 							</span>
 						</>
 					) : (
-						<span className="text-sm text-muted-foreground">Ancora nessun voto</span>
+						<span className="text-sm text-white/50">Ancora nessun voto</span>
 					)}
 				</div>
 
 				<LogConcert concertId={concert.id} />
 
 				<div>
-					<h2 className="mb-2 font-semibold">Scaletta</h2>
+					<h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-white/50">
+						<ListMusic className="h-4 w-4" /> Scaletta
+					</h2>
 					<Setlist mbid={concert.artists?.mbid ?? null} date={concert.date} />
 				</div>
 
+				<ConcertPhotos concertId={concert.id} />
+
 				<div>
-					<ConcertPhotos concertId={concert.id} />
-					<h2 className="mb-2 font-semibold">Recensioni</h2>
+					<h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-white/50">
+						<MessageSquare className="h-4 w-4" /> Recensioni
+					</h2>
 					{reviews.length === 0 ? (
-						<p className="text-muted-foreground">Nessuna recensione ancora. Sii il primo!</p>
+						<p className="text-white/50">Nessuna recensione ancora. Sii il primo!</p>
 					) : (
 						<ul className="flex flex-col gap-3">
 							{reviews.map((x) => (
-								<li key={x.id} className="rounded-lg border p-4">
+								<li key={x.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
 									<div className="flex items-center justify-between">
-										<span className="text-sm font-medium">
-											{x.profiles?.username ? (
-												<Link href={"/u/" + x.profiles.username} className="hover:underline">
-													{x.profiles.display_name || x.profiles.username}
-												</Link>
-											) : (
-												"Qualcuno"
-											)}
-										</span>
-										{x.rating != null && <span className="text-sm">{x.rating}★</span>}
+										<div className="flex flex-col">
+											<span className="text-sm font-medium">
+												{x.profiles?.username ? (
+													<Link href={"/u/" + x.profiles.username} className="hover:underline">
+														{x.profiles.display_name || x.profiles.username}
+													</Link>
+												) : (
+													"Qualcuno"
+												)}
+											</span>
+											<span className="text-xs text-white/40">{fmtDate(x.logged_at)}</span>
+										</div>
+										{x.rating != null && (
+											<span className="inline-flex items-center gap-1 text-sm font-medium text-[#FFC24B]">
+												<Star className="h-3.5 w-3.5 fill-current" /> {x.rating}
+											</span>
+										)}
 									</div>
-									{x.review && <p className="mt-1 text-sm">{x.review}</p>}
+									{x.review && <p className="mt-2 text-sm text-white/70">{x.review}</p>}
 								</li>
 							))}
 						</ul>
