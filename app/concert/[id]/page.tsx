@@ -11,6 +11,8 @@ import { Setlist } from "@/components/setlist"
 import { ConcertPhotos } from "@/components/concert-photos"
 import { Star, ListMusic, MessageSquare } from "lucide-react"
 import { AddToList } from "@/components/add-to-list"
+import { ReviewLikes } from "@/components/review-likes"
+import { ReviewComments } from "@/components/review-comments"
 
 type Concert = {
 	id: string
@@ -153,6 +155,10 @@ export default function ConcertPage() {
 										)}
 									</div>
 									{x.review && <p className="mt-2 text-sm text-white/70">{x.review}</p>}
+									<div className="mt-3 flex items-start gap-4 border-t border-white/10 pt-3">
+	<ReviewLikes logId={x.id} />
+	<ReviewComments logId={x.id} />
+</div>
 								</li>
 							))}
 						</ul>
