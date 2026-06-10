@@ -7,6 +7,16 @@ import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { ConcertPoster } from "@/components/concert-poster"
 import { PosterGridSkeleton } from "@/components/skeleton"
+import { ProfileHeader } from "@/components/profile-header"
+
+type Profile = {
+	id: string
+	username: string | null
+	display_name: string | null
+	avatar_url: string | null
+	bio: string | null
+	city: string | null
+}
 
 type Log = {
 	id: string
@@ -23,20 +33,24 @@ type Log = {
 export default function ProfilePage() {
 	const { user, loading } = useUser()
 	const router = useRouter()
+	const [profile, setProfile] = useState<Profile | null>(null)
 	const [logs, setLogs] = useState<Log[]>([])
 	const [loadingLogs, setLoadingLogs] = useState(true)
 
 	useEffect(() => {
 		if (!user) return
 		const supabase = createClient()
-
 		supabase
 			.from("profiles")
-			.select("username")
+			.select("id, username, display_name, avatar_url, bio, city")
 			.eq("id", user.id)
 			.maybeSingle()
 			.then(({ data }) => {
-				if (data && !data.username) router.push("/onboarding")
+				if (data && !data.username) {
+					router.push("/onboarding")
+					return
+				}
+				setProfile((data as unknown as Profile) ?? null)
 			})
 
 		supabase
@@ -51,7 +65,6 @@ export default function ProfilePage() {
 	}, [user])
 
 	if (loading) return <main className="p-6">Carico…</main>
-
 	if (!user)
 		return (
 			<main className="p-6">
@@ -60,31 +73,32 @@ export default function ProfilePage() {
 		)
 
 	return (
-		<main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-			<div className="flex items-center justify-between">
-				<h1 className="text-2xl font-bold">I miei concerti</h1>
-				<Link href="/settings" className="text-sm text-muted-foreground hover:underline">Modifica profilo</Link>
-			</div>
-			{loadingLogs ? (
-				<PosterGridSkeleton />
-			) : logs.length === 0 ? (
-				<p>
-					Non hai ancora loggato nessun concerto.{" "}
-					<Link href="/search" className="underline">Cerca un artista</Link>.
-				</p>
-			) : (
-				<div className="fade-in grid grid-cols-2 gap-3 sm:grid-cols-3">
-					{logs.map((l) => (
-						<ConcertPoster
-							key={l.id}
-							concertId={l.concert_id}
-							artist={l.concerts?.artists?.name ?? "Artista"}
-							rating={l.rating}
-							subtitle={l.concerts?.venues?.city ?? l.concerts?.date ?? ""}
-						/>
-					))}
-				</div>
-			)}
+		<main className="pb-10">
+			{profile && <ProfileHeader profile={profile} isOwner={true} />}
+
+			<section className="mx-auto max-w-3xl px-6 pt-6">
+				<h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-white/50">I miei concerti</h2>
+				{loadingLogs ? (
+					<PosterGridSkeleton />
+				) : logs.length === 0 ? (
+					<p className="text-white/60">
+						Non hai ancora loggato nessun concerto.{" "}
+						<Link href="/search" className="underline">Cerca un artista</Link>.
+					</p>
+				) : (
+					<div className="fade-in grid grid-cols-2 gap-3 sm:grid-cols-3">
+						{logs.map((l) => (
+							<ConcertPoster
+								key={l.id}
+								concertId={l.concert_id}
+								artist={l.concerts?.artists?.name ?? "Artista"}
+								rating={l.rating}
+								subtitle={l.concerts?.venues?.city ?? l.concerts?.date ?? ""}
+							/>
+						))}
+					</div>
+				)}
+			</section>
 		</main>
 	)
 }
