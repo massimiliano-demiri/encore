@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { ConcertPoster } from "@/components/concert-poster"
@@ -21,21 +22,32 @@ type Log = {
 
 export default function ProfilePage() {
 	const { user, loading } = useUser()
+	const router = useRouter()
 	const [logs, setLogs] = useState<Log[]>([])
 	const [loadingLogs, setLoadingLogs] = useState(true)
 
 	useEffect(() => {
 		if (!user) return
 		const supabase = createClient()
+
+		supabase
+			.from("profiles")
+			.select("username")
+			.eq("id", user.id)
+			.maybeSingle()
+			.then(({ data }) => {
+				if (data && !data.username) router.push("/onboarding")
+			})
+
 		supabase
 			.from("logs")
 			.select("id, rating, review, concert_id, concerts(date, artists(name), venues(name, city))")
 			.eq("user_id", user.id)
 			.order("logged_at", { ascending: false })
 			.then(({ data }) => {
-	setLogs((data as unknown as Log[]) ?? [])
-	setLoadingLogs(false)
-})
+				setLogs((data as unknown as Log[]) ?? [])
+				setLoadingLogs(false)
+			})
 	}, [user])
 
 	if (loading) return <main className="p-6">Carico…</main>
@@ -54,14 +66,14 @@ export default function ProfilePage() {
 				<Link href="/settings" className="text-sm text-muted-foreground hover:underline">Modifica profilo</Link>
 			</div>
 			{loadingLogs ? (
-	<PosterGridSkeleton />
-) : logs.length === 0 ? (
+				<PosterGridSkeleton />
+			) : logs.length === 0 ? (
 				<p>
 					Non hai ancora loggato nessun concerto.{" "}
 					<Link href="/search" className="underline">Cerca un artista</Link>.
 				</p>
 			) : (
-				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+				<div className="fade-in grid grid-cols-2 gap-3 sm:grid-cols-3">
 					{logs.map((l) => (
 						<ConcertPoster
 							key={l.id}
