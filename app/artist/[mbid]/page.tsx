@@ -51,8 +51,9 @@ export default function ArtistPage() {
 								{c.city}{c.country ? ", " + c.country : ""} · {c.date ?? "data sconosciuta"}
 							</div>
 							{user ? (
-								<LogConcert concertId={c.id} userId={user.id} />
+								<LogConcert concertId={c.id} />
 							) : (
+
 								<Link href="/login" className="mt-2 inline-block text-sm text-muted-foreground underline">
 									Accedi per dire "c'ero"
 								</Link>

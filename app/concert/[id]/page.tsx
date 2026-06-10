@@ -7,11 +7,13 @@ import { createClient } from "@/lib/supabase/client"
 import { ArtistImage } from "@/components/artsit-image"
 import { Skeleton } from "@/components/skeleton"
 import { LogConcert } from "@/components/ui/log-concert"
+import { Setlist } from "@/components/setlist"
+import { ConcertPhotos } from "@/components/concert-photos"
 
 type Concert = {
 	id: string
 	date: string | null
-	artists: { name: string } | null
+	artists: { name: string; mbid: string | null } | null
 	venues: { name: string; city: string | null } | null
 }
 
@@ -34,7 +36,7 @@ export default function ConcertPage() {
 		const load = async () => {
 			const { data: c } = await supabase
 				.from("concerts")
-				.select("id, date, artists(name), venues(name, city)")
+				.select("id, date, artists(name, mbid), venues(name, city)")
 				.eq("id", id)
 				.maybeSingle()
 			setConcert((c as unknown as Concert) ?? null)
@@ -50,17 +52,17 @@ export default function ConcertPage() {
 	}, [id])
 
 	if (loading)
-	return (
-		<main className="pb-10">
-			<Skeleton className="h-72 w-full" />
-			<div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-				<Skeleton className="h-10 w-24" />
-				<Skeleton className="h-5 w-32" />
-				<Skeleton className="h-20 w-full rounded-lg" />
-				<Skeleton className="h-20 w-full rounded-lg" />
-			</div>
-		</main>
-	)
+		return (
+			<main className="pb-10">
+				<Skeleton className="h-72 w-full" />
+				<div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
+					<Skeleton className="h-10 w-24" />
+					<Skeleton className="h-5 w-32" />
+					<Skeleton className="h-20 w-full rounded-lg" />
+					<Skeleton className="h-20 w-full rounded-lg" />
+				</div>
+			</main>
+		)
 	if (!concert) return <main className="p-6">Concerto non trovato.</main>
 
 	const rated = reviews.filter((x) => x.rating != null)
@@ -85,7 +87,7 @@ export default function ConcertPage() {
 				</div>
 			</div>
 
-			<div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
+			<div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
 				<div className="flex items-center gap-3">
 					{avg ? (
 						<>
@@ -98,31 +100,41 @@ export default function ConcertPage() {
 						<span className="text-sm text-muted-foreground">Ancora nessun voto</span>
 					)}
 				</div>
-<LogConcert concertId={concert.id} />
-				<h2 className="font-semibold">Recensioni</h2>
-				{reviews.length === 0 ? (
-					<p className="text-muted-foreground">Nessuna recensione ancora. Sii il primo!</p>
-				) : (
-					<ul className="flex flex-col gap-3">
-						{reviews.map((x) => (
-							<li key={x.id} className="rounded-lg border p-4">
-								<div className="flex items-center justify-between">
-									<span className="text-sm font-medium">
-										{x.profiles?.username ? (
-											<Link href={"/u/" + x.profiles.username} className="hover:underline">
-												{x.profiles.display_name || x.profiles.username}
-											</Link>
-										) : (
-											"Qualcuno"
-										)}
-									</span>
-									{x.rating != null && <span className="text-sm">{x.rating}★</span>}
-								</div>
-								{x.review && <p className="mt-1 text-sm">{x.review}</p>}
-							</li>
-						))}
-					</ul>
-				)}
+
+				<LogConcert concertId={concert.id} />
+
+				<div>
+					<h2 className="mb-2 font-semibold">Scaletta</h2>
+					<Setlist mbid={concert.artists?.mbid ?? null} date={concert.date} />
+				</div>
+
+				<div>
+					<ConcertPhotos concertId={concert.id} />
+					<h2 className="mb-2 font-semibold">Recensioni</h2>
+					{reviews.length === 0 ? (
+						<p className="text-muted-foreground">Nessuna recensione ancora. Sii il primo!</p>
+					) : (
+						<ul className="flex flex-col gap-3">
+							{reviews.map((x) => (
+								<li key={x.id} className="rounded-lg border p-4">
+									<div className="flex items-center justify-between">
+										<span className="text-sm font-medium">
+											{x.profiles?.username ? (
+												<Link href={"/u/" + x.profiles.username} className="hover:underline">
+													{x.profiles.display_name || x.profiles.username}
+												</Link>
+											) : (
+												"Qualcuno"
+											)}
+										</span>
+										{x.rating != null && <span className="text-sm">{x.rating}★</span>}
+									</div>
+									{x.review && <p className="mt-1 text-sm">{x.review}</p>}
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
 			</div>
 		</main>
 	)

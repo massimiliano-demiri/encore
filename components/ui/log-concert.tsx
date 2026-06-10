@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
+import { PhotoUpload } from "@/components/photo-upload"
 
 export function LogConcert({ concertId }: { concertId: string }) {
 	const { user } = useUser()
 	const supabase = createClient()
 	const [rating, setRating] = useState("")
 	const [review, setReview] = useState("")
-	const [hasLog, setHasLog] = useState(false)
+	const [logId, setLogId] = useState<string | null>(null)
 	const [saving, setSaving] = useState(false)
 	const [msg, setMsg] = useState<string | null>(null)
 
@@ -17,13 +18,13 @@ export function LogConcert({ concertId }: { concertId: string }) {
 		if (!user) return
 		supabase
 			.from("logs")
-			.select("rating, review")
+			.select("id, rating, review")
 			.eq("user_id", user.id)
 			.eq("concert_id", concertId)
 			.maybeSingle()
 			.then(({ data }) => {
 				if (data) {
-					setHasLog(true)
+					setLogId(data.id)
 					setRating(data.rating != null ? String(data.rating) : "")
 					setReview(data.review ?? "")
 				}
@@ -37,21 +38,26 @@ export function LogConcert({ concertId }: { concertId: string }) {
 		e.preventDefault()
 		setSaving(true)
 		setMsg(null)
-		const { error } = await supabase.from("logs").upsert(
-			{
-				user_id: user.id,
-				concert_id: concertId,
-				rating: rating ? Number(rating) : null,
-				review: review.trim() || null,
-			},
-			{ onConflict: "user_id,concert_id" },
-		)
+		const { data, error } = await supabase
+			.from("logs")
+			.upsert(
+				{
+					user_id: user.id,
+					concert_id: concertId,
+					rating: rating ? Number(rating) : null,
+					review: review.trim() || null,
+				},
+				{ onConflict: "user_id,concert_id" },
+			)
+			.select("id")
+			.maybeSingle()
 		setSaving(false)
 		if (error) {
 			setMsg(error.message)
 			return
 		}
-		window.location.reload()
+		if (data) setLogId(data.id)
+		setMsg("Salvato! Ora puoi aggiungere le foto qui sotto.")
 	}
 
 	const remove = async () => {
@@ -62,7 +68,7 @@ export function LogConcert({ concertId }: { concertId: string }) {
 
 	return (
 		<form onSubmit={save} className="flex flex-col gap-3 rounded-xl border border-white/10 p-4">
-			<h3 className="font-semibold">{hasLog ? "Modifica il tuo voto" : "C'eri? Vota e racconta"}</h3>
+			<h3 className="font-semibold">{logId ? "Modifica il tuo voto" : "C'eri? Vota e racconta"}</h3>
 			<div className="flex items-center gap-2">
 				<label className="text-sm text-muted-foreground">Voto</label>
 				<select
@@ -85,15 +91,15 @@ export function LogConcert({ concertId }: { concertId: string }) {
 				rows={3}
 				className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-[#FF2D6B]"
 			/>
-			{msg && <p className="text-sm text-red-400">{msg}</p>}
+			{msg && <p className="text-sm text-muted-foreground">{msg}</p>}
 			<div className="flex items-center gap-2">
 				<button
 					disabled={saving}
 					className="rounded-lg bg-[#FF2D6B] px-4 py-2 font-medium text-white disabled:opacity-50"
 				>
-					{saving ? "Salvo…" : hasLog ? "Aggiorna" : "Salva"}
+					{saving ? "Salvo…" : logId ? "Aggiorna" : "Salva"}
 				</button>
-				{hasLog && (
+				{logId && (
 					<button
 						type="button"
 						onClick={remove}
@@ -103,6 +109,12 @@ export function LogConcert({ concertId }: { concertId: string }) {
 					</button>
 				)}
 			</div>
+			{logId && (
+				<div className="border-t border-white/10 pt-3">
+					<p className="mb-2 text-sm font-medium">Le tue foto</p>
+					<PhotoUpload logId={logId} />
+				</div>
+			)}
 		</form>
 	)
 }
