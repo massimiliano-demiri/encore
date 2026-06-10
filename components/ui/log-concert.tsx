@@ -1,66 +1,108 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { useUser } from "@/lib/use-user"
 
-const RATINGS = ["0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5"]
-
-export function LogConcert({ concertId, userId }: { concertId: string; userId: string }) {
-	const [open, setOpen] = useState(false)
-	const [rating, setRating] = useState("4")
-	const [review, setReview] = useState("")
-	const [saved, setSaved] = useState(false)
+export function LogConcert({ concertId }: { concertId: string }) {
+	const { user } = useUser()
 	const supabase = createClient()
+	const [rating, setRating] = useState("")
+	const [review, setReview] = useState("")
+	const [hasLog, setHasLog] = useState(false)
+	const [saving, setSaving] = useState(false)
+	const [msg, setMsg] = useState<string | null>(null)
 
-	const save = async () => {
+	useEffect(() => {
+		if (!user) return
+		supabase
+			.from("logs")
+			.select("rating, review")
+			.eq("user_id", user.id)
+			.eq("concert_id", concertId)
+			.maybeSingle()
+			.then(({ data }) => {
+				if (data) {
+					setHasLog(true)
+					setRating(data.rating != null ? String(data.rating) : "")
+					setReview(data.review ?? "")
+				}
+			})
+	}, [user, concertId])
+
+	if (!user)
+		return <p className="text-sm text-muted-foreground">Accedi per votare questo concerto.</p>
+
+	const save = async (e: React.FormEvent) => {
+		e.preventDefault()
+		setSaving(true)
+		setMsg(null)
 		const { error } = await supabase.from("logs").upsert(
 			{
-				user_id: userId,
+				user_id: user.id,
 				concert_id: concertId,
-				rating: Number(rating),
-				review: review || null,
+				rating: rating ? Number(rating) : null,
+				review: review.trim() || null,
 			},
 			{ onConflict: "user_id,concert_id" },
 		)
-		if (!error) {
-			setSaved(true)
-			setOpen(false)
+		setSaving(false)
+		if (error) {
+			setMsg(error.message)
+			return
 		}
+		window.location.reload()
 	}
 
-	if (saved) return <span className="mt-2 inline-block text-sm text-green-600">✓ Loggato</span>
-
-	if (!open)
-		return (
-			<Button onClick={() => setOpen(true)} size="sm" variant="secondary" className="mt-2">
-				C'ero
-			</Button>
-		)
+	const remove = async () => {
+		if (!confirm("Vuoi eliminare questo log?")) return
+		await supabase.from("logs").delete().eq("user_id", user.id).eq("concert_id", concertId)
+		window.location.reload()
+	}
 
 	return (
-		<div className="mt-2 flex flex-col gap-2">
-			<select
-				value={rating}
-				onChange={(e) => setRating(e.target.value)}
-				className="rounded border p-1 text-sm"
-			>
-				{RATINGS.map((r) => (
-					<option key={r} value={r}>
-						{r} ★
-					</option>
-				))}
-			</select>
-			<Textarea
+		<form onSubmit={save} className="flex flex-col gap-3 rounded-xl border border-white/10 p-4">
+			<h3 className="font-semibold">{hasLog ? "Modifica il tuo voto" : "C'eri? Vota e racconta"}</h3>
+			<div className="flex items-center gap-2">
+				<label className="text-sm text-muted-foreground">Voto</label>
+				<select
+					value={rating}
+					onChange={(e) => setRating(e.target.value)}
+					className="rounded-lg border border-white/15 bg-white/5 px-2 py-1"
+				>
+					<option value="">—</option>
+					{[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((n) => (
+						<option key={n} value={n}>
+							{n}★
+						</option>
+					))}
+				</select>
+			</div>
+			<textarea
 				value={review}
 				onChange={(e) => setReview(e.target.value)}
 				placeholder="Com'è stato? (facoltativo)"
+				rows={3}
+				className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-[#FF2D6B]"
 			/>
-			<div className="flex gap-2">
-				<Button onClick={save} size="sm">Salva</Button>
-				<Button onClick={() => setOpen(false)} size="sm" variant="outline">Annulla</Button>
+			{msg && <p className="text-sm text-red-400">{msg}</p>}
+			<div className="flex items-center gap-2">
+				<button
+					disabled={saving}
+					className="rounded-lg bg-[#FF2D6B] px-4 py-2 font-medium text-white disabled:opacity-50"
+				>
+					{saving ? "Salvo…" : hasLog ? "Aggiorna" : "Salva"}
+				</button>
+				{hasLog && (
+					<button
+						type="button"
+						onClick={remove}
+						className="rounded-lg border border-white/15 px-4 py-2 text-sm hover:bg-white/5"
+					>
+						Elimina
+					</button>
+				)}
 			</div>
-		</div>
+		</form>
 	)
 }

@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase/admin"
+import { getSupabaseAdmin } from "@/lib/supabase/admin"
 
 export async function GET(
 	_request: Request,
 	{ params }: { params: Promise<{ mbid: string }> },
 ) {
 	const { mbid } = await params
+	const supabaseAdmin = getSupabaseAdmin()
+
+
 
 	const url = "https://api.setlist.fm/rest/1.0/artist/" + mbid + "/setlists?p=1"
+
 	const res = await fetch(url, {
 		headers: {
 			"x-api-key": process.env.SETLISTFM_API_KEY!,

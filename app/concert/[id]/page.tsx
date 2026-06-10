@@ -6,6 +6,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { ArtistImage } from "@/components/artsit-image"
 import { Skeleton } from "@/components/skeleton"
+import { LogConcert } from "@/components/ui/log-concert"
 
 type Concert = {
 	id: string
@@ -97,7 +98,7 @@ export default function ConcertPage() {
 						<span className="text-sm text-muted-foreground">Ancora nessun voto</span>
 					)}
 				</div>
-
+<LogConcert concertId={concert.id} />
 				<h2 className="font-semibold">Recensioni</h2>
 				{reviews.length === 0 ? (
 					<p className="text-muted-foreground">Nessuna recensione ancora. Sii il primo!</p>
