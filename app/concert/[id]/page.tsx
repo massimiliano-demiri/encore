@@ -10,6 +10,7 @@ import { LogConcert } from "@/components/ui/log-concert"
 import { Setlist } from "@/components/setlist"
 import { ConcertPhotos } from "@/components/concert-photos"
 import { Star, ListMusic, MessageSquare } from "lucide-react"
+import { AddToList } from "@/components/add-to-list"
 
 type Concert = {
 	id: string
@@ -111,6 +112,7 @@ export default function ConcertPage() {
 				</div>
 
 				<LogConcert concertId={concert.id} />
+				<AddToList concertId={concert.id} />
 
 				<div>
 					<h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-white/50">
