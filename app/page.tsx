@@ -1,39 +1,74 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { createClient } from "@/lib/supabase/client"
+import { ConcertPoster } from "@/components/concert-poster"
 
-export default function HomePage() {
-	const [q, setQ] = useState("")
+type FeedItem = {
+	id: string
+	rating: number | null
+	concert_id: string
+	concerts: { artists: { name: string } | null; venues: { city: string | null } | null } | null
+}
+
+export default function Home() {
 	const router = useRouter()
+	const supabase = createClient()
+	const [q, setQ] = useState("")
+	const [recent, setRecent] = useState<FeedItem[]>([])
 
-	const go = () => {
+	useEffect(() => {
+		supabase
+			.from("logs")
+			.select("id, rating, concert_id, concerts(artists(name), venues(city))")
+			.not("review", "is", null)
+			.order("logged_at", { ascending: false })
+			.limit(6)
+			.then(({ data }) => setRecent((data as unknown as FeedItem[]) ?? []))
+	}, [])
+
+	const search = (e: React.FormEvent) => {
+		e.preventDefault()
 		if (q.trim()) router.push("/search?q=" + encodeURIComponent(q.trim()))
 	}
 
 	return (
-		<main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#0E0E12] p-6 text-white">
-			<div className="flex flex-col items-center gap-2 text-center">
-				<h1 className="text-5xl font-bold tracking-tight">Encore</h1>
-				<p className="text-lg text-white/60">Ogni live, per sempre.</p>
-			</div>
-			<div className="flex w-full max-w-md gap-2">
-				<Input
-					value={q}
-					onChange={(e) => setQ(e.target.value)}
-					onKeyDown={(e) => e.key === "Enter" && go()}
-					placeholder="Cerca un artista…"
-					className="border-white/15 bg-white/5 text-white placeholder:text-white/40"
-				/>
-				<Button onClick={go} className="bg-[#FF2D6B] text-white hover:bg-[#FF2D6B]/90">
-					Cerca
-				</Button>
-			</div>
-			<a href="/me" className="text-sm text-white/50 underline">
-				I miei concerti
-			</a>
+		<main>
+			<section className="mx-auto max-w-3xl px-6 py-16 text-center">
+				<h1 className="text-5xl font-bold tracking-tight [font-family:var(--font-display)]">
+					Ogni live, per sempre.
+				</h1>
+				<p className="mx-auto mt-4 max-w-xl text-lg text-white/70">
+					Tieni traccia dei concerti che hai visto, dai un voto, scrivi due righe. E scopri quelli degli altri.
+				</p>
+				<form onSubmit={search} className="mx-auto mt-8 flex max-w-md gap-2">
+					<input
+						value={q}
+						onChange={(e) => setQ(e.target.value)}
+						placeholder="Cerca un artista…"
+						className="flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 outline-none focus:border-[#FF2D6B]"
+					/>
+					<button className="rounded-full bg-[#FF2D6B] px-5 py-2 font-medium text-white">Cerca</button>
+				</form>
+			</section>
+
+			{recent.length > 0 && (
+				<section className="mx-auto max-w-3xl px-6 pb-16">
+					<h2 className="mb-3 font-semibold">Ultimi live raccontati</h2>
+					<div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+						{recent.map((it) => (
+							<ConcertPoster
+								key={it.id}
+								concertId={it.concert_id}
+								artist={it.concerts?.artists?.name ?? "Artista"}
+								rating={it.rating}
+								subtitle={it.concerts?.venues?.city ?? ""}
+							/>
+						))}
+					</div>
+				</section>
+			)}
 		</main>
 	)
 }

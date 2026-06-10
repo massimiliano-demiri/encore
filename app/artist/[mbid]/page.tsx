@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useUser } from "@/lib/use-user"
 import { LogConcert } from "@/components/ui/log-concert"
+import { ArtistImage } from "@/components/artsit-image"
 
 type Concert = {
 	id: string
@@ -34,6 +35,8 @@ export default function ArtistPage() {
 	return (
 		<main className="mx-auto flex max-w-md flex-col gap-4 p-6">
 			<Link href="/search" className="text-sm text-muted-foreground">← Cerca</Link>
+			<ArtistImage name={artist} className="h-44 w-full rounded-xl" />
+<h1 className="text-2xl font-bold">{artist || "Artista"}</h1>
 			<h1 className="text-2xl font-bold">{artist || "Artista"}</h1>
 			{loading ? (
 				<p>Carico i concerti…</p>

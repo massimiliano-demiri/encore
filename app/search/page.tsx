@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { ArtistImage } from "@/components/artsit-image"
 
 type Artist = { mbid: string; name: string; info: string }
 
@@ -43,12 +44,12 @@ function SearchInner() {
 			{loading && <p>Cerco…</p>}
 			<ul className="flex flex-col gap-2">
 				{artists.map((a) => (
-					<li key={a.mbid}>
-						<Link href={"/artist/" + a.mbid} className="block rounded-lg border p-3 hover:bg-muted">
-							<span className="font-medium">{a.name}</span>
-							{a.info && <span className="text-muted-foreground"> — {a.info}</span>}
-						</Link>
-					</li>
+					<li key={a.mbid} className="flex items-center gap-3 rounded-lg border p-2">
+	<ArtistImage name={a.name} className="h-12 w-12 shrink-0 rounded-md" />
+	<Link href={"/artist/" + a.mbid} className="font-medium hover:underline">
+		{a.name}
+	</Link>
+</li>
 				))}
 			</ul>
 		</main>
