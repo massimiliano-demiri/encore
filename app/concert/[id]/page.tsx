@@ -13,6 +13,7 @@ import { Star, ListMusic, MessageSquare } from "lucide-react"
 import { AddToList } from "@/components/add-to-list"
 import { ReviewLikes } from "@/components/review-likes"
 import { ReviewComments } from "@/components/review-comments"
+import { ShareCardButton } from "@/components/share-card-button"
 
 type Concert = {
 	id: string
@@ -47,7 +48,6 @@ export default function ConcertPage() {
 				.eq("id", id)
 				.maybeSingle()
 			setConcert((c as unknown as Concert) ?? null)
-
 			const { data: r } = await supabase
 				.from("logs")
 				.select("id, rating, review, logged_at, profiles(username, display_name)")
@@ -71,6 +71,7 @@ export default function ConcertPage() {
 				</div>
 			</main>
 		)
+
 	if (!concert) return <main className="p-6">Concerto non trovato.</main>
 
 	const rated = reviews.filter((x) => x.rating != null)
@@ -83,7 +84,7 @@ export default function ConcertPage() {
 	return (
 		<main className="pb-10">
 			<div className="relative h-72 w-full overflow-hidden">
-				<ArtistImage name={artist} className="absolute inset-0 h-full w-full" />
+				<ArtistImage name={artist} mbid={concert.artists?.mbid ?? undefined} className="absolute inset-0 h-full w-full" />
 				<div className="absolute inset-0 bg-gradient-to-t from-[#0E0E12] via-[#0E0E12]/60 to-transparent" />
 				<div className="absolute inset-x-0 bottom-0 mx-auto max-w-2xl p-6">
 					<p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[#FF2D6B]">Concerto</p>
@@ -155,10 +156,11 @@ export default function ConcertPage() {
 										)}
 									</div>
 									{x.review && <p className="mt-2 text-sm text-white/70">{x.review}</p>}
-									<div className="mt-3 flex items-start gap-4 border-t border-white/10 pt-3">
-	<ReviewLikes logId={x.id} />
-	<ReviewComments logId={x.id} />
-</div>
+									<div className="mt-3 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3">
+										<ReviewLikes logId={x.id} />
+										<ReviewComments logId={x.id} />
+										<ShareCardButton logId={x.id} />
+									</div>
 								</li>
 							))}
 						</ul>
