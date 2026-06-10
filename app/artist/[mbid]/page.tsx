@@ -43,7 +43,7 @@ export default function ArtistPage() {
 	return (
 		<main className="pb-10">
 			<div className="relative h-64 w-full overflow-hidden">
-				<ArtistImage name={artist} className="absolute inset-0 h-full w-full" />
+				<ArtistImage name={artist} mbid={mbid} className="absolute inset-0 h-full w-full" />
 				<div className="absolute inset-0 bg-gradient-to-t from-[#0E0E12] via-[#0E0E12]/60 to-transparent" />
 				<Link
 					href="/search"
@@ -61,7 +61,6 @@ export default function ArtistPage() {
 				<h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-white/50">
 					Concerti
 				</h2>
-
 				{loading ? (
 					<div className="flex flex-col gap-2">
 						<Skeleton className="h-24 w-full rounded-2xl" />

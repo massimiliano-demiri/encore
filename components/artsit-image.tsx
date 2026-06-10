@@ -8,16 +8,27 @@ function hueFromString(s: string) {
 	return h
 }
 
-export function ArtistImage({ name, className = "" }: { name: string; className?: string }) {
+export function ArtistImage({
+	name,
+	mbid,
+	className = "",
+}: {
+	name: string
+	mbid?: string
+	className?: string
+}) {
 	const [src, setSrc] = useState<string | null>(null)
 
 	useEffect(() => {
-		if (!name) return
-		fetch("/api/artist-image?q=" + encodeURIComponent(name))
+		if (!name && !mbid) return
+		const params = new URLSearchParams()
+		if (mbid) params.set("mbid", mbid)
+		if (name) params.set("q", name)
+		fetch("/api/artist-image?" + params.toString())
 			.then((r) => r.json())
 			.then((d) => setSrc(d.image ?? null))
 			.catch(() => setSrc(null))
-	}, [name])
+	}, [name, mbid])
 
 	const hue = hueFromString(name || "x")
 	const gradientStyle = {
