@@ -63,7 +63,7 @@ export function ReviewComments({ logId }: { logId: string }) {
 	}
 
 	return (
-		<div>
+		<div className="flex-1">
 			<button
 				onClick={() => setOpen((v) => !v)}
 				className="inline-flex items-center gap-1.5 text-sm text-white/50 transition hover:text-white"
@@ -96,12 +96,12 @@ export function ReviewComments({ logId }: { logId: string }) {
 								onChange={(e) => setBody(e.target.value)}
 								onKeyDown={(e) => e.key === "Enter" && send()}
 								placeholder="Scrivi un commento…"
-								className="flex-1 rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-white/30"
+								className="w-full flex-1 rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-white/30"
 							/>
 							<button
 								onClick={send}
 								disabled={sending || !body.trim()}
-								className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#FF2D6B] text-white disabled:opacity-40"
+								className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FF2D6B] text-white disabled:opacity-40"
 								aria-label="Invia"
 							>
 								<Send className="h-4 w-4" />
