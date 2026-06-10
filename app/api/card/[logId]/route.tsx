@@ -1,10 +1,41 @@
-import { ImageResponse } from "next/og"
+import type { MetadataRoute } from "next"
 import { createClient } from "@supabase/supabase-js"
 
-const supabase = createClient(
-	process.env.NEXT_PUBLIC_SUPABASE_URL!,
-	process.env.SUPABASE_SERVICE_ROLE_KEY!,
-)
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://encored.app"
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+	const admin = createClient(
+		process.env.NEXT_PUBLIC_SUPABASE_URL!,
+		process.env.SUPABASE_SERVICE_ROLE_KEY!,
+	)
+
+	const staticRoutes: MetadataRoute.Sitemap = [
+		{ url: SITE, priority: 1 },
+		{ url: SITE + "/search", priority: 0.6 },
+	]
+
+	const { data: concerts } = await admin.from("concerts").select("id").limit(5000)
+	const { data: artists } = await admin
+		.from("artists")
+		.select("mbid")
+		.not("mbid", "is", null)
+		.limit(5000)
+
+	const concertRoutes: MetadataRoute.Sitemap = (concerts ?? []).map((c) => ({
+		url: SITE + "/concert/" + (c as { id: string }).id,
+		changeFrequency: "weekly",
+		priority: 0.8,
+	}))
+
+	const artistRoutes: MetadataRoute.Sitemap = (artists ?? []).map((a) => ({
+		url: SITE + "/artist/" + (a as { mbid: string }).mbid,
+		changeFrequency: "weekly",
+		priority: 0.7,
+	}))
+
+	return [...staticRoutes, ...concertRoutes, ...artistRoutes]
+import { ImageResponse } from "next/og"
+import { createClient } from "@supabase/supabase-js"
 
 const rootStyle = {
 	width: 1080,
