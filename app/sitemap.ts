@@ -20,6 +20,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		.select("mbid")
 		.not("mbid", "is", null)
 		.limit(5000)
+	const { data: profiles } = await admin
+		.from("profiles")
+		.select("username")
+		.not("username", "is", null)
+		.limit(5000)
 
 	const concertRoutes: MetadataRoute.Sitemap = (concerts ?? []).map((c) => ({
 		url: SITE + "/concert/" + (c as { id: string }).id,
@@ -33,5 +38,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		priority: 0.7,
 	}))
 
-	return [...staticRoutes, ...concertRoutes, ...artistRoutes]
+	const profileRoutes: MetadataRoute.Sitemap = (profiles ?? []).map((p) => ({
+		url: SITE + "/u/" + (p as { username: string }).username,
+		changeFrequency: "weekly",
+		priority: 0.5,
+	}))
+
+	return [...staticRoutes, ...concertRoutes, ...artistRoutes, ...profileRoutes]
 }
