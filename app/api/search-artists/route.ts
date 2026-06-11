@@ -5,21 +5,24 @@ export async function GET(request: Request) {
 	const q = searchParams.get("q")?.trim()
 	if (!q) return NextResponse.json({ artists: [] })
 
-	const url =
-		"https://musicbrainz.org/ws/2/artist?query=" +
-		encodeURIComponent(q) +
-		"&fmt=json&limit=8"
-
-	// MusicBrainz richiede uno User-Agent con un contatto: metti la TUA email.
-	const res = await fetch(url, {
-		headers: { "User-Agent": "Encore/0.1 ( tua@email.com )" },
-	})
-	const data = await res.json()
-
-	const artists = (data.artists ?? []).map((a: any) => ({
-		mbid: a.id,
-		name: a.name,
-		info: a.disambiguation ?? a.country ?? "",
-	}))
-	return NextResponse.json({ artists })
+	try {
+		const res = await fetch(
+			"https://musicbrainz.org/ws/2/artist?query=" +
+				encodeURIComponent(q) +
+				"&fmt=json&limit=8",
+			{
+				headers: { "User-Agent": "Encore/1.0 ( m.demiri@hotmail.it )" },
+			},
+		)
+		if (!res.ok) return NextResponse.json({ artists: [] })
+		const data = await res.json()
+		const artists = (data.artists ?? []).map((a: any) => ({
+			mbid: a.id,
+			name: a.name,
+			info: a.disambiguation ?? a.country ?? "",
+		}))
+		return NextResponse.json({ artists })
+	} catch {
+		return NextResponse.json({ artists: [] })
+	}
 }

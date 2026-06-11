@@ -20,9 +20,20 @@ function SearchInner() {
 		if (!term.trim()) return
 		setLoading(true)
 		const res = await fetch("/api/search-artists?q=" + encodeURIComponent(term))
-		const data = await res.json()
-		setArtists(data.artists)
+		if (!res.ok) {
+			setArtists([])
+			setLoading(false)
+			return
+		}
+		const text = await res.text()
+		try {
+			const data = JSON.parse(text || "{\"artists\":[]}")
+			setArtists(data.artists ?? [])
+		} catch {
+			setArtists([])
+		}
 		setLoading(false)
+
 	}
 
 	useEffect(() => {

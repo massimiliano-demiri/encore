@@ -8,25 +8,34 @@ export async function GET(request: Request) {
 	const next = searchParams.get("next") ?? "/me"
 
 	if (code) {
-		const cookieStore = await cookies()
-		const supabase = createServerClient(
-			process.env.NEXT_PUBLIC_SUPABASE_URL!,
-			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-			{
-				cookies: {
-					getAll() {
-						return cookieStore.getAll()
-					},
-					setAll(cookiesToSet) {
-						cookiesToSet.forEach(({ name, value, options }) =>
-							cookieStore.set(name, value, options),
-						)
+		try {
+			const cookieStore = await cookies()
+			const supabase = createServerClient(
+				process.env.NEXT_PUBLIC_SUPABASE_URL!,
+				process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+				{
+					cookies: {
+						getAll() {
+							return cookieStore.getAll()
+						},
+						setAll(cookiesToSet) {
+							cookiesToSet.forEach(({ name, value, options }) =>
+								cookieStore.set(name, value, options),
+							)
+						},
 					},
 				},
-			},
-		)
-		await supabase.auth.exchangeCodeForSession(code)
+			)
+			await supabase.auth.exchangeCodeForSession(code)
+		} catch (err) {
+			console.error("Auth callback error:", err)
+			return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+		}
 	}
 
+	// next può contenere un path relativo (es. /me) o assoluto con origin
+	if (next.startsWith("http")) {
+		return NextResponse.redirect(next)
+	}
 	return NextResponse.redirect(`${origin}${next}`)
 }
