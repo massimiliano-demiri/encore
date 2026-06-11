@@ -21,12 +21,43 @@ const steps = [
 ]
 
 export default function Home() {
-	const supabase = createClient()
+	// IMPORTANT: evita crash in build/eval se le env Supabase non sono presenti.
+	// Usiamo una lazy init in client-side (dopo mount) invece che a livello di render.
+	const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null)
 	const [recent, setRecent] = useState<FeedItem[]>([])
 	const [loggedIn, setLoggedIn] = useState(false)
 	const [counts, setCounts] = useState({ logs: 0, users: 0 })
 
 	useEffect(() => {
+		const load = async () => {
+			if (!supabase) return
+
+			const { data: auth } = await supabase.auth.getUser()
+			setLoggedIn(!!auth.user)
+
+			const { data } = await supabase
+				.from("logs")
+				.select("id, rating, concert_id, concerts(artists(name), venues(city))")
+				.not("review", "is", null)
+				.order("logged_at", { ascending: false })
+				.limit(6)
+			setRecent((data as unknown as FeedItem[]) ?? [])
+
+			const [logsRes, usersRes] = await Promise.all([
+				supabase.from("logs").select("*", { count: "exact", head: true }),
+				supabase.from("profiles").select("*", { count: "exact", head: true }),
+			])
+			setCounts({ logs: logsRes.count ?? 0, users: usersRes.count ?? 0 })
+		}
+
+		// lazy init client-side: non usare createClient se env mancano (evita crash su Vercel)
+		if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+			setSupabase(createClient())
+		}
+	}, [])
+
+	useEffect(() => {
+		if (!supabase) return
 		const load = async () => {
 			const { data: auth } = await supabase.auth.getUser()
 			setLoggedIn(!!auth.user)
@@ -46,7 +77,7 @@ export default function Home() {
 			setCounts({ logs: logsRes.count ?? 0, users: usersRes.count ?? 0 })
 		}
 		load()
-	}, [])
+	}, [supabase])
 
 	return (
 		<main>
