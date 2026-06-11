@@ -11,6 +11,11 @@ export default function LoginPage() {
 	const supabase = createClient()
 
 	const signIn = async () => {
+		if (!supabase) {
+			alert("Supabase non configurato: mancano NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY")
+			return
+		}
+
 		if (!email.trim()) return
 		setLoading(true)
 		const { error } = await supabase.auth.signInWithOtp({

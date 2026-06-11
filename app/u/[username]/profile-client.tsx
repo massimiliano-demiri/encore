@@ -30,29 +30,41 @@ type Log = {
 
 export function ProfileClient({ username }: { username: string }) {
 	const { user } = useUser()
-	const supabase = createClient()
 	const [profile, setProfile] = useState<Profile | null>(null)
 	const [logs, setLogs] = useState<Log[]>([])
 	const [loading, setLoading] = useState(true)
 
 	useEffect(() => {
 		const load = async () => {
+			const supabase = createClient()
+			if (!supabase) {
+				setLoading(false)
+				return
+			}
+
 			const { data: p } = await supabase
 				.from("profiles")
 				.select("id, username, display_name, avatar_url, bio, city")
 				.eq("username", username)
 				.maybeSingle()
+
 			if (p) {
 				setProfile(p as unknown as Profile)
+
 				const { data: l } = await supabase
 					.from("logs")
-					.select("id, rating, review, concert_id, concerts(date, artists(name), venues(name, city))")
-					.eq("user_id", p.id)
+					.select(
+						"id, rating, review, concert_id, concerts(date, artists(name), venues(name, city))",
+						)
+					.eq("user_id", (p as { id: string }).id)
 					.order("logged_at", { ascending: false })
+
 				setLogs((l as unknown as Log[]) ?? [])
 			}
+
 			setLoading(false)
 		}
+
 		load()
 	}, [username])
 
@@ -91,3 +103,4 @@ export function ProfileClient({ username }: { username: string }) {
 		</main>
 	)
 }
+
