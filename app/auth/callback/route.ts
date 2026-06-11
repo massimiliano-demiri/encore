@@ -5,37 +5,44 @@ import { cookies } from "next/headers"
 export async function GET(request: Request) {
 	const { searchParams, origin } = new URL(request.url)
 	const code = searchParams.get("code")
-	const next = searchParams.get("next") ?? "/me"
 
-	if (code) {
-		try {
-			const cookieStore = await cookies()
-			const supabase = createServerClient(
-				process.env.NEXT_PUBLIC_SUPABASE_URL!,
-				process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-				{
-					cookies: {
-						getAll() {
-							return cookieStore.getAll()
-						},
-						setAll(cookiesToSet) {
-							cookiesToSet.forEach(({ name, value, options }) =>
-								cookieStore.set(name, value, options),
-							)
-						},
+	if (!code) {
+		console.error("Auth callback: nessun code nella URL")
+		return NextResponse.redirect(`${origin}/login?error=no_code`)
+	}
+
+	// next può arrivare come path relativo (/me) o come URL assoluto
+	const nextRaw = searchParams.get("next") ?? "/me"
+	const next = nextRaw.startsWith("http") ? nextRaw : `${origin}${nextRaw}`
+
+	try {
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() {
+						return cookieStore.getAll()
+					},
+					setAll(cookiesToSet) {
+						for (const { name, value, options } of cookiesToSet) {
+							cookieStore.set(name, value, options)
+						}
 					},
 				},
-			)
-			await supabase.auth.exchangeCodeForSession(code)
-		} catch (err) {
-			console.error("Auth callback error:", err)
-			return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+			},
+		)
+
+		const { error } = await supabase.auth.exchangeCodeForSession(code)
+		if (error) {
+			console.error("Auth callback: exchangeCodeForSession fallito", error.message)
+			return NextResponse.redirect(`${origin}/login?error=exchange_failed`)
 		}
+	} catch (err) {
+		console.error("Auth callback: eccezione", err)
+		return NextResponse.redirect(`${origin}/login?error=exception`)
 	}
 
-	// next può contenere un path relativo (es. /me) o assoluto con origin
-	if (next.startsWith("http")) {
-		return NextResponse.redirect(next)
-	}
-	return NextResponse.redirect(`${origin}${next}`)
+	return NextResponse.redirect(next)
 }
