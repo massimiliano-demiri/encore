@@ -17,7 +17,7 @@ export function AddToList({ concertId }: { concertId: string }) {
 	const [newTitle, setNewTitle] = useState("")
 
 	const refresh = async () => {
-		if (!user) return
+		if (!user || !supabase) return
 		setLoading(true)
 		const { data: ls } = await supabase
 			.from("lists")
@@ -25,7 +25,6 @@ export function AddToList({ concertId }: { concertId: string }) {
 			.eq("user_id", user.id)
 			.order("created_at", { ascending: false })
 		setLists((ls as unknown as ListRow[]) ?? [])
-
 		const { data: items } = await supabase
 			.from("list_items")
 			.select("list_id")
@@ -41,6 +40,7 @@ export function AddToList({ concertId }: { concertId: string }) {
 	}, [open])
 
 	const toggle = async (listId: string) => {
+		if (!supabase) return
 		if (member[listId]) {
 			await supabase.from("list_items").delete().eq("list_id", listId).eq("concert_id", concertId)
 			setMember((m) => ({ ...m, [listId]: false }))
@@ -51,7 +51,7 @@ export function AddToList({ concertId }: { concertId: string }) {
 	}
 
 	const createAndAdd = async () => {
-		if (!user || !newTitle.trim()) return
+		if (!supabase || !user || !newTitle.trim()) return
 		const { data, error } = await supabase
 			.from("lists")
 			.insert({ user_id: user.id, title: newTitle.trim(), is_public: true })
@@ -76,7 +76,6 @@ export function AddToList({ concertId }: { concertId: string }) {
 			>
 				<ListPlus className="h-4 w-4" /> Aggiungi a una lista
 			</button>
-
 			{open && (
 				<div className="absolute z-20 mt-2 w-72 rounded-2xl border border-white/10 bg-[#17171F] p-3 shadow-xl">
 					{loading ? (
@@ -100,7 +99,6 @@ export function AddToList({ concertId }: { concertId: string }) {
 									))}
 								</ul>
 							)}
-
 							<div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2">
 								<input
 									value={newTitle}

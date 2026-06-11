@@ -24,6 +24,7 @@ export function ReviewComments({ logId }: { logId: string }) {
 	const [sending, setSending] = useState(false)
 
 	const loadCount = async () => {
+		if (!supabase) return
 		const { count: c } = await supabase
 			.from("review_comments")
 			.select("*", { count: "exact", head: true })
@@ -32,6 +33,7 @@ export function ReviewComments({ logId }: { logId: string }) {
 	}
 
 	const loadComments = async () => {
+		if (!supabase) return
 		const { data } = await supabase
 			.from("review_comments")
 			.select("id, body, created_at, user_id, profiles(username, display_name)")
@@ -42,14 +44,14 @@ export function ReviewComments({ logId }: { logId: string }) {
 
 	useEffect(() => {
 		loadCount()
-	}, [logId])
+	}, [logId, supabase])
 
 	useEffect(() => {
 		if (open) loadComments()
-	}, [open, logId])
+	}, [open, logId, supabase])
 
 	const send = async () => {
-		if (!user || !body.trim() || sending) return
+		if (!supabase || !user || !body.trim() || sending) return
 		setSending(true)
 		const { error } = await supabase
 			.from("review_comments")
@@ -71,7 +73,6 @@ export function ReviewComments({ logId }: { logId: string }) {
 				<MessageCircle className="h-4 w-4" />
 				{count > 0 ? count : "Commenta"}
 			</button>
-
 			{open && (
 				<div className="mt-3 flex flex-col gap-3">
 					{comments.map((c) => (
@@ -88,7 +89,6 @@ export function ReviewComments({ logId }: { logId: string }) {
 							<p className="mt-1 text-sm text-white/80">{c.body}</p>
 						</div>
 					))}
-
 					{user ? (
 						<div className="flex items-center gap-2">
 							<input
@@ -109,7 +109,10 @@ export function ReviewComments({ logId }: { logId: string }) {
 						</div>
 					) : (
 						<p className="text-sm text-white/40">
-							<Link href="/login" className="underline">Accedi</Link> per commentare.
+							<Link href="/login" className="underline">
+								Accedi
+							</Link>{" "}
+							per commentare.
 						</p>
 					)}
 				</div>

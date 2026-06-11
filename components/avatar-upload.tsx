@@ -9,6 +9,7 @@ export function AvatarUpload({ userId, currentUrl }: { userId: string; currentUr
 	const [busy, setBusy] = useState(false)
 
 	const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (!supabase) return
 		const file = e.target.files?.[0]
 		if (!file) return
 		setBusy(true)
@@ -32,7 +33,9 @@ export function AvatarUpload({ userId, currentUrl }: { userId: string; currentUr
 			{url ? (
 				<img src={url} alt="Avatar" className="h-16 w-16 rounded-full object-cover ring-2 ring-white/10" />
 			) : (
-				<div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-xs text-white/50">Nessuna</div>
+				<div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-xs text-white/50">
+					Nessuna
+				</div>
 			)}
 			<label className="cursor-pointer rounded-full border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
 				{busy ? "Carico…" : "Cambia foto"}

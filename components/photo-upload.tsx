@@ -14,6 +14,7 @@ export function PhotoUpload({ logId }: { logId: string }) {
 	const [msg, setMsg] = useState<string | null>(null)
 
 	const loadPhotos = () => {
+		if (!supabase) return
 		supabase
 			.from("photos")
 			.select("id, url")
@@ -26,6 +27,7 @@ export function PhotoUpload({ logId }: { logId: string }) {
 	}, [logId])
 
 	const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (!supabase) return
 		const file = e.target.files?.[0]
 		if (!file || !user) return
 		setUploading(true)
@@ -52,6 +54,7 @@ export function PhotoUpload({ logId }: { logId: string }) {
 	}
 
 	const remove = async (id: string) => {
+		if (!supabase) return
 		await supabase.from("photos").delete().eq("id", id)
 		loadPhotos()
 	}

@@ -1,3 +1,4 @@
+// components/review-likes.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -14,6 +15,7 @@ export function ReviewLikes({ logId }: { logId: string }) {
 
 	useEffect(() => {
 		const load = async () => {
+			if (!supabase) return
 			const { count: c } = await supabase
 				.from("review_likes")
 				.select("*", { count: "exact", head: true })
@@ -30,9 +32,10 @@ export function ReviewLikes({ logId }: { logId: string }) {
 			}
 		}
 		load()
-	}, [logId, user])
+	}, [logId, user, supabase])
 
 	const toggle = async () => {
+		if (!supabase) return
 		if (!user || busy) return
 		setBusy(true)
 		if (liked) {

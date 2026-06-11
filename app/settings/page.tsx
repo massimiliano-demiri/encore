@@ -21,7 +21,7 @@ export default function SettingsPage() {
 	const [msg, setMsg] = useState("")
 
 	useEffect(() => {
-		if (!user) return
+		if (!user || !supabase) return
 		supabase
 			.from("profiles")
 			.select("username, display_name, bio, city, avatar_url")
@@ -36,9 +36,10 @@ export default function SettingsPage() {
 					setAvatarUrl(data.avatar_url ?? null)
 				}
 			})
-	}, [user])
+	}, [user, supabase])
 
 	const save = async () => {
+		if (!supabase) return
 		setMsg("")
 		const clean = username.toLowerCase().trim()
 		const { error } = await supabase
@@ -58,24 +59,18 @@ export default function SettingsPage() {
 	return (
 		<main className="mx-auto flex max-w-md flex-col gap-3 p-6">
 			<h1 className="text-2xl font-bold [font-family:var(--font-display)]">Il tuo profilo</h1>
-
 			<div className="my-2">
 				<label className="mb-2 block text-sm">Foto profilo</label>
 				<AvatarUpload userId={user.id} currentUrl={avatarUrl} />
 			</div>
-
 			<label className="text-sm">Username (solo minuscole, senza spazi)</label>
 			<Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="es. massi" />
-
 			<label className="text-sm">Nome visualizzato</label>
 			<Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-
 			<label className="text-sm">Città</label>
 			<Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="es. Milano" />
-
 			<label className="text-sm">Bio</label>
 			<Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Due parole su di te" />
-
 			<Button onClick={save}>Salva</Button>
 			{msg && <p className="text-sm text-muted-foreground">{msg}</p>}
 		</main>

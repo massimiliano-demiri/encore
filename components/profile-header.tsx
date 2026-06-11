@@ -21,6 +21,7 @@ export function ProfileHeader({ profile, isOwner }: { profile: Profile; isOwner:
 
 	useEffect(() => {
 		const load = async () => {
+			if (!supabase) return
 			const [c, f1, f2] = await Promise.all([
 				supabase.from("logs").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
 				supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", profile.id),
@@ -29,7 +30,7 @@ export function ProfileHeader({ profile, isOwner }: { profile: Profile; isOwner:
 			setStats({ concerts: c.count ?? 0, followers: f1.count ?? 0, following: f2.count ?? 0 })
 		}
 		load()
-	}, [profile.id])
+	}, [profile.id, supabase])
 
 	const name = profile.display_name || profile.username || "Utente"
 	const initials = name.trim().slice(0, 2).toUpperCase()
@@ -64,7 +65,6 @@ export function ProfileHeader({ profile, isOwner }: { profile: Profile; isOwner:
 					)}
 				</div>
 			</div>
-
 			<div className="mt-6 flex justify-center gap-8 border-y border-white/10 py-4 sm:justify-start">
 				<Stat value={stats.concerts} label="Concerti" />
 				<Stat value={stats.followers} label="Follower" />

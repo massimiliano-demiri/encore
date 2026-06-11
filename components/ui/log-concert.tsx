@@ -15,7 +15,7 @@ export function LogConcert({ concertId }: { concertId: string }) {
 	const [msg, setMsg] = useState<string | null>(null)
 
 	useEffect(() => {
-		if (!user) return
+		if (!user || !supabase) return
 		supabase
 			.from("logs")
 			.select("id, rating, review")
@@ -29,13 +29,14 @@ export function LogConcert({ concertId }: { concertId: string }) {
 					setReview(data.review ?? "")
 				}
 			})
-	}, [user, concertId])
+	}, [user, concertId, supabase])
 
 	if (!user)
 		return <p className="text-sm text-muted-foreground">Accedi per votare questo concerto.</p>
 
 	const save = async (e: React.FormEvent) => {
 		e.preventDefault()
+		if (!supabase) return
 		setSaving(true)
 		setMsg(null)
 		const { data, error } = await supabase
@@ -61,6 +62,7 @@ export function LogConcert({ concertId }: { concertId: string }) {
 	}
 
 	const remove = async () => {
+		if (!supabase) return
 		if (!confirm("Vuoi eliminare questo log?")) return
 		await supabase.from("logs").delete().eq("user_id", user.id).eq("concert_id", concertId)
 		window.location.reload()

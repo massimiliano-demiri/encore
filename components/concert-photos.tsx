@@ -10,6 +10,7 @@ export function ConcertPhotos({ concertId }: { concertId: string }) {
 
 	useEffect(() => {
 		const supabase = createClient()
+		if (!supabase) return
 		supabase
 			.from("photos")
 			.select("id, url, logs!inner(concert_id)")

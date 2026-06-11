@@ -40,6 +40,7 @@ export default function ProfilePage() {
 	useEffect(() => {
 		if (!user) return
 		const supabase = createClient()
+		if (!supabase) return
 		supabase
 			.from("profiles")
 			.select("id, username, display_name, avatar_url, bio, city")
@@ -52,7 +53,6 @@ export default function ProfilePage() {
 				}
 				setProfile((data as unknown as Profile) ?? null)
 			})
-
 		supabase
 			.from("logs")
 			.select("id, rating, review, concert_id, concerts(date, artists(name), venues(name, city))")
@@ -68,22 +68,29 @@ export default function ProfilePage() {
 	if (!user)
 		return (
 			<main className="p-6">
-				<Link href="/login" className="underline">Accedi</Link> per vedere i tuoi concerti.
+				<Link href="/login" className="underline">
+					Accedi
+				</Link>{" "}
+				per vedere i tuoi concerti.
 			</main>
 		)
 
 	return (
 		<main className="pb-10">
 			{profile && <ProfileHeader profile={profile} isOwner={true} />}
-
 			<section className="mx-auto max-w-3xl px-6 pt-6">
-				<h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-white/50">I miei concerti</h2>
+				<h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-white/50">
+					I miei concerti
+				</h2>
 				{loadingLogs ? (
 					<PosterGridSkeleton />
 				) : logs.length === 0 ? (
 					<p className="text-white/60">
 						Non hai ancora loggato nessun concerto.{" "}
-						<Link href="/search" className="underline">Cerca un artista</Link>.
+						<Link href="/search" className="underline">
+							Cerca un artista
+						</Link>
+						.
 					</p>
 				) : (
 					<div className="fade-in grid grid-cols-2 gap-3 sm:grid-cols-3">

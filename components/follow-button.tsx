@@ -12,7 +12,7 @@ export function FollowButton({ profileId }: { profileId: string }) {
 	const [ready, setReady] = useState(false)
 
 	useEffect(() => {
-		if (!user) {
+		if (!user || !supabase) {
 			setReady(true)
 			return
 		}
@@ -26,11 +26,12 @@ export function FollowButton({ profileId }: { profileId: string }) {
 				setFollowing(!!data)
 				setReady(true)
 			})
-	}, [user, profileId])
+	}, [user, profileId, supabase])
 
 	if (!user || user.id === profileId || !ready) return null
 
 	const toggle = async () => {
+		if (!supabase) return
 		if (following) {
 			await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", profileId)
 			setFollowing(false)

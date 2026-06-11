@@ -21,7 +21,7 @@ export default function OnboardingPage() {
 
 	const save = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!user) return
+		if (!supabase || !user) return
 		const clean = username.toLowerCase().trim().replace(/[^a-z0-9._]/g, "")
 		if (clean.length < 3) {
 			setError("Lo username deve avere almeno 3 caratteri (lettere, numeri, . o _).")
@@ -46,7 +46,6 @@ export default function OnboardingPage() {
 	return (
 		<main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-6">
 			<div className="pointer-events-none absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-[#7A5CFF]/20 blur-[130px]" />
-
 			<div className="relative w-full max-w-sm">
 				<div className="mb-6 text-center">
 					<p className="text-xs font-semibold uppercase tracking-widest text-[#FF2D6B]">Ci siamo quasi</p>
@@ -55,7 +54,6 @@ export default function OnboardingPage() {
 						Ti serve per il profilo pubblico: encored.app/u/<span className="text-white">tuonome</span>
 					</p>
 				</div>
-
 				<form onSubmit={save} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
 					<div className="relative">
 						<AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />

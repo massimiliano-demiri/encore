@@ -23,6 +23,7 @@ export default function ListsPage() {
 	const [loadingLists, setLoadingLists] = useState(true)
 
 	const load = async (uid: string) => {
+		if (!supabase) return
 		const { data } = await supabase
 			.from("lists")
 			.select("id, title, description, is_public")
@@ -37,7 +38,7 @@ export default function ListsPage() {
 	}, [user])
 
 	const create = async () => {
-		if (!user || !title.trim()) return
+		if (!supabase || !user || !title.trim()) return
 		setSaving(true)
 		const { error } = await supabase
 			.from("lists")
@@ -53,7 +54,10 @@ export default function ListsPage() {
 	if (!user)
 		return (
 			<main className="p-6">
-				<Link href="/login" className="underline">Accedi</Link> per creare le tue liste.
+				<Link href="/login" className="underline">
+					Accedi
+				</Link>{" "}
+				per creare le tue liste.
 			</main>
 		)
 
@@ -108,7 +112,9 @@ export default function ListsPage() {
 									</div>
 									<div>
 										<div className="font-medium">{l.title || "Senza titolo"}</div>
-										{l.description && <div className="text-sm text-white/50">{l.description}</div>}
+										{l.description && (
+											<div className="text-sm text-white/50">{l.description}</div>
+										)}
 									</div>
 								</div>
 								{l.is_public ? (
