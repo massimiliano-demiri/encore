@@ -13,6 +13,7 @@ const rootStyle = {
 	color: "#F4F4F6",
 	fontFamily: "sans-serif",
 };
+
 const topBarStyle = { display: "flex", alignItems: "center", justifyContent: "space-between" };
 const wordmarkStyle = {
 	display: "flex",
@@ -126,4 +127,3 @@ export async function GET(
 		{ width: 1080, height: 1920 },
 	);
 }
-
