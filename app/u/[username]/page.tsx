@@ -4,8 +4,12 @@ import { ProfileClient } from "./profile-client"
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://encored.app"
 
-const admin = () =>
-	createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+function getAdmin() {
+	const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+	const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+	if (!url || !key) return null
+	return createClient(url, key)
+}
 
 type ProfileMeta = {
 	id: string
@@ -16,7 +20,9 @@ type ProfileMeta = {
 }
 
 async function getProfile(username: string) {
-	const { data } = await admin()
+	const admin = getAdmin()
+	if (!admin) return null
+	const { data } = await admin
 		.from("profiles")
 		.select("id, username, display_name, bio, city")
 		.eq("username", username)
@@ -50,21 +56,24 @@ export default async function Page({ params }: { params: Promise<{ username: str
 	const p = await getProfile(username)
 	const name = p?.display_name || p?.username || "Profilo"
 
-	const jsonLd = {
-		"@context": "https://schema.org",
-		"@type": "ProfilePage",
-		mainEntity: {
-			"@type": "Person",
-			name,
-			description: p?.bio ?? undefined,
-			address: p?.city ?? undefined,
-		},
+	let ldHtml = undefined
+	if (p) {
+		const jsonLd = {
+			"@context": "https://schema.org",
+			"@type": "ProfilePage",
+			mainEntity: {
+				"@type": "Person",
+				name,
+				description: p.bio ?? undefined,
+				address: p.city ?? undefined,
+			},
+		}
+		ldHtml = { __html: JSON.stringify(jsonLd) }
 	}
-	const ldHtml = { __html: JSON.stringify(jsonLd) }
 
 	return (
 		<>
-			<script type="application/ld+json" dangerouslySetInnerHTML={ldHtml} />
+			{ldHtml && <script type="application/ld+json" dangerouslySetInnerHTML={ldHtml} />}
 			<ProfileClient username={username} />
 		</>
 	)

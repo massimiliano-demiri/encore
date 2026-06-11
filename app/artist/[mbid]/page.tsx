@@ -4,11 +4,17 @@ import { ArtistClient } from "./artist-client"
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://encored.app"
 
-const admin = () =>
-	createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+function getAdmin() {
+	const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+	const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+	if (!url || !key) return null
+	return createClient(url, key)
+}
 
 async function getArtistMeta(mbid: string) {
-	const { data } = await admin()
+	const admin = getAdmin()
+	if (!admin) return null
+	const { data } = await admin
 		.from("artists")
 		.select("name")
 		.eq("mbid", mbid)
@@ -41,17 +47,20 @@ export default async function Page({ params }: { params: Promise<{ mbid: string 
 	const a = await getArtistMeta(mbid)
 	const name = a?.name ?? "Artista"
 
-	const jsonLd = {
-		"@context": "https://schema.org",
-		"@type": "MusicGroup",
-		name,
-		url: SITE + "/artist/" + mbid,
+	let ldHtml = undefined
+	if (a) {
+		const jsonLd = {
+			"@context": "https://schema.org",
+			"@type": "MusicGroup",
+			name,
+			url: SITE + "/artist/" + mbid,
+		}
+		ldHtml = { __html: JSON.stringify(jsonLd) }
 	}
-	const ldHtml = { __html: JSON.stringify(jsonLd) }
 
 	return (
 		<>
-			<script type="application/ld+json" dangerouslySetInnerHTML={ldHtml} />
+			{ldHtml && <script type="application/ld+json" dangerouslySetInnerHTML={ldHtml} />}
 			<ArtistClient mbid={mbid} />
 		</>
 	)

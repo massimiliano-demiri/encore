@@ -4,8 +4,12 @@ import { ConcertClient } from "./concert-client"
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://encored.app"
 
-const admin = () =>
-	createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+function getAdmin() {
+	const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+	const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+	if (!url || !key) return null
+	return createClient(url, key)
+}
 
 type ConcertMeta = {
 	date: string | null
@@ -17,7 +21,9 @@ const fmt = (d: string | null) =>
 	d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
 
 async function getConcert(id: string) {
-	const { data } = await admin()
+	const admin = getAdmin()
+	if (!admin) return null
+	const { data } = await admin
 		.from("concerts")
 		.select("date, artists(name), venues(name, city, country)")
 		.eq("id", id)
@@ -54,27 +60,29 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 	const artist = c?.artists?.name ?? "Artista"
 	const place = [c?.venues?.name, c?.venues?.city].filter(Boolean).join(", ")
 
-	const jsonLd = {
-		"@context": "https://schema.org",
-		"@type": "MusicEvent",
-		name: artist + (place ? " — " + place : ""),
-		startDate: c?.date ?? undefined,
-		eventStatus: "https://schema.org/EventScheduled",
-		performer: { "@type": "MusicGroup", name: artist },
-		location: c?.venues?.name
-			? {
-					"@type": "Place",
-					name: c.venues.name,
-					address: [c.venues.city, c.venues.country].filter(Boolean).join(", "),
-				}
-			: undefined,
+	let ldHtml = undefined
+	if (c) {
+		const jsonLd = {
+			"@context": "https://schema.org",
+			"@type": "MusicEvent",
+			name: artist + (place ? " — " + place : ""),
+			startDate: c.date ?? undefined,
+			eventStatus: "https://schema.org/EventScheduled",
+			performer: { "@type": "MusicGroup", name: artist },
+			location: c.venues?.name
+				? {
+						"@type": "Place",
+						name: c.venues.name,
+						address: [c.venues.city, c.venues.country].filter(Boolean).join(", "),
+					}
+				: undefined,
+		}
+		ldHtml = { __html: JSON.stringify(jsonLd) }
 	}
-
-	const ldHtml = { __html: JSON.stringify(jsonLd) }
 
 	return (
 		<>
-			<script type="application/ld+json" dangerouslySetInnerHTML={ldHtml} />
+			{ldHtml && <script type="application/ld+json" dangerouslySetInnerHTML={ldHtml} />}
 			<ConcertClient id={id} />
 		</>
 	)

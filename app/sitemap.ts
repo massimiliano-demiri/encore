@@ -3,16 +3,21 @@ import { createClient } from "@supabase/supabase-js"
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://encored.app"
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-	const admin = createClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.SUPABASE_SERVICE_ROLE_KEY!,
-	)
+function getAdmin() {
+	const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+	const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+	if (!url || !key) return null
+	return createClient(url, key)
+}
 
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const staticRoutes: MetadataRoute.Sitemap = [
 		{ url: SITE, priority: 1 },
 		{ url: SITE + "/search", priority: 0.6 },
 	]
+
+	const admin = getAdmin()
+	if (!admin) return staticRoutes
 
 	const { data: concerts } = await admin.from("concerts").select("id").limit(5000)
 	const { data: artists } = await admin
