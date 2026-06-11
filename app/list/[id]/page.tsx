@@ -37,6 +37,7 @@ export default function ListDetail() {
 
 	useEffect(() => {
 		const load = async () => {
+			if (!supabase) return
 			const { data: l } = await supabase
 				.from("lists")
 				.select("id, user_id, title, description, is_public")
@@ -54,9 +55,10 @@ export default function ListDetail() {
 			setLoading(false)
 		}
 		load()
-	}, [id])
+	}, [id, supabase])
 
 	const remove = async (itemId: string) => {
+		if (!supabase) return
 		await supabase.from("list_items").delete().eq("id", itemId)
 		setItems((prev) => prev.filter((x) => x.id !== itemId))
 	}
@@ -67,6 +69,7 @@ export default function ListDetail() {
 				<PosterGridSkeleton />
 			</main>
 		)
+
 	if (!list) return <main className="p-6">Lista non trovata.</main>
 
 	const isOwner = user?.id === list.user_id
@@ -74,20 +77,30 @@ export default function ListDetail() {
 	return (
 		<main className="mx-auto flex max-w-2xl flex-col gap-5 p-6">
 			<div>
-				<Link href="/lists" className="text-sm text-white/50 hover:text-white">← Le tue liste</Link>
+				<Link href="/lists" className="text-sm text-white/50 hover:text-white">
+					← Le tue liste
+				</Link>
 				<div className="mt-2 flex items-center gap-2">
-					<h1 className="text-2xl font-bold [font-family:var(--font-display)]">{list.title || "Senza titolo"}</h1>
-					{list.is_public ? <Globe className="h-4 w-4 text-white/40" /> : <Lock className="h-4 w-4 text-white/40" />}
+					<h1 className="text-2xl font-bold [font-family:var(--font-display)]">
+						{list.title || "Senza titolo"}
+					</h1>
+					{list.is_public ? (
+						<Globe className="h-4 w-4 text-white/40" />
+					) : (
+						<Lock className="h-4 w-4 text-white/40" />
+					)}
 				</div>
-				{list.description && <p className="mt-1 text-sm text-white/60">{list.description}</p>}
+				{list.description && (
+					<p className="mt-1 text-sm text-white/60">{list.description}</p>
+				)}
 				<p className="mt-1 text-sm text-white/40">
 					{items.length} {items.length === 1 ? "concerto" : "concerti"}
 				</p>
 			</div>
-
 			{items.length === 0 ? (
 				<p className="text-white/50">
-					Lista vuota. {isOwner && "Aggiungi concerti dalla loro pagina (lo facciamo nel prossimo passo)."}
+					Lista vuota.{" "}
+					{isOwner && "Aggiungi concerti dalla loro pagina (lo facciamo nel prossimo passo)."}
 				</p>
 			) : (
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
