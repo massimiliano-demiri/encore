@@ -1,0 +1,21 @@
+{
+	"name": "Encore — Il diario dei concerti",
+	"short_name": "Encore",
+	"description": "Tieni traccia dei live che hai visto, dai un voto e scopri quelli degli altri.",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#0E0E12",
+	"theme_color": "#0E0E12",
+	"icons": [
+		{
+			"src": "/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}
