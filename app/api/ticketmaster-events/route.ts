@@ -7,40 +7,39 @@ export async function GET(request: Request) {
 	const lat = searchParams.get("lat")
 	const lng = searchParams.get("lng")
 	const radius = searchParams.get("radius") ?? "100"
+	const keyword = searchParams.get("keyword")
 	const unit = "km"
 
 	if (!TICKETMASTER_KEY) {
 		return NextResponse.json({ events: [] })
 	}
 
-	if (!lat || !lng) {
-		// Fallback: eventi in Italia
-		const url =
+	let url: string
+
+	if (keyword) {
+		// Ricerca per nome artista
+		url =
+			"https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
+			TICKETMASTER_KEY +
+			"&keyword=" +
+			encodeURIComponent(keyword) +
+			"&classificationName=music&size=15&sort=date,asc"
+	} else if (lat && lng) {
+		// Ricerca per posizione
+		url =
+			"https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
+			TICKETMASTER_KEY +
+			"&latlong=" + lat + "," + lng +
+			"&radius=" + radius +
+			"&unit=" + unit +
+			"&classificationName=music&size=40&sort=date,asc"
+	} else {
+		// Fallback: Italia
+		url =
 			"https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
 			TICKETMASTER_KEY +
 			"&countryCode=IT&classificationName=music&size=30&sort=date,asc"
-		try {
-			const res = await fetch(url)
-			if (!res.ok) return NextResponse.json({ events: [] })
-			const data = await res.json()
-			return NextResponse.json({ events: formatEvents(data) })
-		} catch {
-			return NextResponse.json({ events: [] })
-		}
 	}
-
-	const url =
-		"https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
-		TICKETMASTER_KEY +
-		"&latlong=" +
-		lat +
-		"," +
-		lng +
-		"&radius=" +
-		radius +
-		"&unit=" +
-		unit +
-		"&classificationName=music&size=40&sort=date,asc"
 
 	try {
 		const res = await fetch(url)
@@ -64,8 +63,7 @@ function formatEvents(data: any) {
 		const venue = e._embedded?.venues?.[0] ?? {}
 		const date = e.dates?.start?.dateTime ?? e.dates?.start?.localDate ?? null
 		const isoDate = date ? date.slice(0, 10) : null
-		const name =
-			e.name ?? e._embedded?.attractions?.[0]?.name ?? "Artista"
+		const name = e.name ?? e._embedded?.attractions?.[0]?.name ?? "Artista"
 
 		return {
 			id: e.id,
