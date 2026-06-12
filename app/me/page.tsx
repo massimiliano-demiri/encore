@@ -8,7 +8,7 @@ import { useUser } from "@/lib/use-user"
 import { ConcertPoster } from "@/components/concert-poster"
 import { PosterGridSkeleton } from "@/components/skeleton"
 import { ProfileHeader } from "@/components/profile-header"
-import { LogOut } from "lucide-react"
+import { LogOut, Sparkles } from "lucide-react"
 
 type Profile = {
 	id: string
@@ -83,6 +83,8 @@ export default function ProfilePage() {
 			</main>
 		)
 
+	const year = new Date().getFullYear()
+
 	return (
 		<main className="pb-20 sm:pb-10">
 			{profile && <ProfileHeader profile={profile} isOwner={true} />}
@@ -116,18 +118,43 @@ export default function ProfilePage() {
 				)}
 			</section>
 
-			{/* Logout — visibile sia mobile che desktop */}
-			<section className="mx-auto max-w-3xl px-6 pt-12">
-				<div className="border-t border-white/10 pt-6 flex justify-end">
-					<button
-						onClick={handleLogout}
-						className="inline-flex items-center gap-2 text-sm text-white/40 transition hover:text-white"
-					>
-						<LogOut className="h-4 w-4" />
-						Esci
-					</button>
-				</div>
-			</section>
+			{/* Wrapped + Logout */}
+			{logs.length > 0 && (
+				<section className="mx-auto max-w-3xl px-6 pt-10">
+					<div className="border-t border-white/10 pt-6 flex items-center justify-between">
+						<Link
+							href={"/api/wrapped/" + user.id}
+							target="_blank"
+							className="inline-flex items-center gap-2 text-sm font-semibold text-[#FFC24B] transition hover:text-[#FFD84B]"
+						>
+							<Sparkles className="h-4 w-4" />
+							Il mio Wrapped {year}
+						</Link>
+						<button
+							onClick={handleLogout}
+							className="inline-flex items-center gap-2 text-sm text-white/40 transition hover:text-white"
+						>
+							<LogOut className="h-4 w-4" />
+							Esci
+						</button>
+					</div>
+				</section>
+			)}
+
+			{/* Solo logout (se nessun concerto) */}
+			{logs.length === 0 && (
+				<section className="mx-auto max-w-3xl px-6 pt-12">
+					<div className="border-t border-white/10 pt-6 flex justify-end">
+						<button
+							onClick={handleLogout}
+							className="inline-flex items-center gap-2 text-sm text-white/40 transition hover:text-white"
+						>
+							<LogOut className="h-4 w-4" />
+							Esci
+						</button>
+					</div>
+				</section>
+			)}
 		</main>
 	)
 }
