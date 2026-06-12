@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/skeleton"
 import { LogConcert } from "@/components/ui/log-concert"
 import { Setlist } from "@/components/setlist"
 import { ConcertPhotos } from "@/components/concert-photos"
-import { Star, ListMusic, MessageSquare } from "lucide-react"
+import { Star, ListMusic, MessageSquare, Users } from "lucide-react"
 import { AddToList } from "@/components/add-to-list"
 import { ReviewLikes } from "@/components/review-likes"
 import { ReviewComments } from "@/components/review-comments"
@@ -29,6 +29,14 @@ type Review = {
 	profiles: { username: string | null; display_name: string | null } | null
 }
 
+type Attendee = {
+	profiles: {
+		username: string | null
+		display_name: string | null
+		avatar_url: string | null
+	} | null
+}
+
 const fmtDate = (d: string | null) =>
 	d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
 
@@ -36,27 +44,36 @@ export function ConcertClient({ id }: { id: string }) {
 	const supabase = createClient()
 	const [concert, setConcert] = useState<Concert | null>(null)
 	const [reviews, setReviews] = useState<Review[]>([])
+	const [attendees, setAttendees] = useState<Attendee[]>([])
 	const [loading, setLoading] = useState(true)
 
 	useEffect(() => {
-    const load = async () => {
-        if (!supabase) return
-        const { data: c } = await supabase
-            .from("concerts")
-            .select("id, date, artists(name, mbid), venues(name, city)")
-            .eq("id", id)
-            .maybeSingle()
-        setConcert((c as unknown as Concert) ?? null)
-        const { data: r } = await supabase
-            .from("logs")
-            .select("id, rating, review, logged_at, profiles(username, display_name)")
-            .eq("concert_id", id)
-            .order("logged_at", { ascending: false })
-        setReviews((r as unknown as Review[]) ?? [])
-        setLoading(false)
-    }
-    load()
-}, [id, supabase])
+		const load = async () => {
+			if (!supabase) return
+			const { data: c } = await supabase
+				.from("concerts")
+				.select("id, date, artists(name, mbid), venues(name, city)")
+				.eq("id", id)
+				.maybeSingle()
+			setConcert((c as unknown as Concert) ?? null)
+
+			const [{ data: r }, { data: a }] = await Promise.all([
+				supabase
+					.from("logs")
+					.select("id, rating, review, logged_at, profiles(username, display_name)")
+					.eq("concert_id", id)
+					.order("logged_at", { ascending: false }),
+				supabase
+					.from("logs")
+					.select("profiles(username, display_name, avatar_url)")
+					.eq("concert_id", id),
+			])
+			setReviews((r as unknown as Review[]) ?? [])
+			setAttendees((a as unknown as Attendee[]) ?? [])
+			setLoading(false)
+		}
+		load()
+	}, [id, supabase])
 
 	if (loading)
 		return (
@@ -112,6 +129,42 @@ export function ConcertClient({ id }: { id: string }) {
 						<span className="text-sm text-white/50">Ancora nessun voto</span>
 					)}
 				</div>
+
+				{/* Chi altro c'era */}
+				{attendees.length > 0 && (
+					<div>
+						<h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-white/50">
+							<Users className="h-4 w-4" /> Chi altro c'era ({attendees.length})
+						</h2>
+						<div className="flex flex-wrap gap-2">
+							{attendees.map((a, i) => {
+								const name = a.profiles?.display_name || a.profiles?.username || "Anonimo"
+								const initials = name.trim().slice(0, 2).toUpperCase()
+								const href = a.profiles?.username ? "/u/" + a.profiles.username : "#"
+								return (
+									<Link
+										key={i}
+										href={href}
+										className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-1.5 pr-4 transition hover:border-white/25 hover:bg-white/[0.06]"
+									>
+										{a.profiles?.avatar_url ? (
+											<img
+												src={a.profiles.avatar_url}
+												alt={name}
+												className="h-7 w-7 rounded-full object-cover"
+											/>
+										) : (
+											<div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-xs font-bold text-white">
+												{initials}
+											</div>
+										)}
+										<span className="text-sm text-white/80">{name}</span>
+									</Link>
+								)
+							})}
+						</div>
+					</div>
+				)}
 
 				<LogConcert concertId={concert.id} />
 				<AddToList concertId={concert.id} />

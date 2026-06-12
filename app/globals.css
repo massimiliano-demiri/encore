@@ -130,25 +130,84 @@
 }
 
 @keyframes fadeIn {
-	from {
-		opacity: 0;
-		transform: translateY(6px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-in {
-	animation: fadeIn 0.3s ease-out both;
+  animation: fadeIn 0.3s ease-out both;
 }
 
 a,
 button {
-	transition: color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 button:active {
-	transform: scale(0.97);
+  transform: scale(0.97);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ANIMA — tocchi personali, niente template
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* 1. Texture grain sullo sfondo (noise sottile via SVG inline) */
+.dark body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 2. Selezione testo brandizzata (magenta invece di blu) */
+::selection {
+  background-color: #FF2D6B;
+  color: #fff;
+}
+
+::-moz-selection {
+  background-color: #FF2D6B;
+  color: #fff;
+}
+
+/* 3. Scrollbar personalizzata (semi-trasparente, coerente) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.12);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.22);
+}
+
+/* 4. Hover link: scalda verso il gold invece del sottile underline */
+.dark a:not([class*="bg-"]):not(.hover\:underline):hover {
+  color: #FFC24B;
+}
+
+/* 5. Focus ring magenta sugli input */
+.dark input:focus-visible,
+.dark textarea:focus-visible,
+.dark select:focus-visible {
+  outline: 2px solid #FF2D6B;
+  outline-offset: 1px;
+  border-color: transparent;
 }
