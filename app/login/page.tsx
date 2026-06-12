@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Mail, Lock, ArrowRight, CheckCircle2, User, Eye, EyeOff, Sparkles } from "lucide-react"
+import { Mail, Lock, ArrowRight, CheckCircle2, User, Eye, EyeOff, Sparkles, MapPin } from "lucide-react"
 
 type Mode = "login" | "signup" | "magic"
 
@@ -14,13 +14,47 @@ export default function LoginPage() {
 	const [showPw, setShowPw] = useState(false)
 	const [username, setUsername] = useState("")
 	const [displayName, setDisplayName] = useState("")
+	const [city, setCity] = useState("")
+	const [citySuggestions, setCitySuggestions] = useState<string[]>([])
+	const [cityOpen, setCityOpen] = useState(false)
+	const [cityLoading, setCityLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [sent, setSent] = useState(false)
 	const supabase = createClient()
 	const router = useRouter()
+	const cityRef = useRef<HTMLDivElement>(null)
+const cityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+	// Chiudi suggerimenti cliccando fuori
+	useEffect(() => {
+		const handler = (e: MouseEvent) => {
+			if (cityRef.current && !cityRef.current.contains(e.target as Node)) {
+				setCityOpen(false)
+			}
+		}
+		document.addEventListener("mousedown", handler)
+		return () => document.removeEventListener("mousedown", handler)
+	}, [])
 
-	// ─── Login email+password ───
+	const fetchCities = (q: string) => {
+		if (q.length < 2) { setCitySuggestions([]); setCityOpen(false); return }
+		setCityLoading(true)
+		fetch("/api/cities?q=" + encodeURIComponent(q))
+			.then((r) => r.json())
+			.then((d) => {
+				setCitySuggestions(d.cities ?? [])
+				setCityOpen((d.cities ?? []).length > 0)
+				setCityLoading(false)
+			})
+			.catch(() => setCityLoading(false))
+	}
+
+	const handleCityChange = (value: string) => {
+		setCity(value)
+		if (cityTimer.current) clearTimeout(cityTimer.current)
+		cityTimer.current = setTimeout(() => fetchCities(value), 200)
+	}
+
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!supabase || !email.trim() || !password) return
@@ -39,7 +73,6 @@ export default function LoginPage() {
 		router.push("/me")
 	}
 
-	// ─── Registrazione email+password ───
 	const handleSignup = async (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!supabase || !email.trim() || !password) return
@@ -75,21 +108,21 @@ export default function LoginPage() {
 			setError(err.message)
 			return
 		}
-
-		// Se la registrazione ha creato subito la sessione (email non confermata = auto-confirm)
 		if (data.session && data.user) {
 			await supabase
 				.from("profiles")
-				.update({ username: clean, display_name: displayName.trim() || clean })
+				.update({
+					username: clean,
+					display_name: displayName.trim() || clean,
+					city: city.trim() || null,
+				})
 				.eq("id", data.user.id)
 			router.push("/me")
 		} else {
-			// Email di conferma inviata
 			setSent(true)
 		}
 	}
 
-	// ─── Magic link (fallback) ───
 	const handleMagic = async (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!supabase || !email.trim()) return
@@ -103,7 +136,6 @@ export default function LoginPage() {
 		if (!err) setSent(true)
 	}
 
-	// ─── Stato "email inviata" (magic link o conferma registrazione) ───
 	if (sent) {
 		return (
 			<main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-6">
@@ -129,7 +161,6 @@ export default function LoginPage() {
 		)
 	}
 
-	// ─── Form ───
 	return (
 		<main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-6">
 			<div className="pointer-events-none absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-[#FF2D6B]/20 blur-[130px]" />
@@ -141,7 +172,6 @@ export default function LoginPage() {
 					<p className="mt-2 text-sm text-white/50">Ogni live, per sempre.</p>
 				</div>
 
-				{/* Toggle login / signup */}
 				<div className="mb-3 flex rounded-xl bg-white/[0.03] border border-white/10 p-0.5">
 					<button
 						onClick={() => { setMode("login"); setError(null) }}
@@ -162,7 +192,6 @@ export default function LoginPage() {
 				</div>
 
 				<div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-					{/* Email */}
 					<div className="relative">
 						<Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
 						<input
@@ -174,7 +203,6 @@ export default function LoginPage() {
 						/>
 					</div>
 
-					{/* Password (non serve per magic link) */}
 					{mode !== "magic" && (
 						<div className="relative">
 							<Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
@@ -195,11 +223,10 @@ export default function LoginPage() {
 						</div>
 					)}
 
-					{/* Campi extra registrazione */}
 					{mode === "signup" && (
 						<>
 							<div className="relative">
-								<Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+								<User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
 								<input
 									value={username}
 									onChange={(e) => setUsername(e.target.value)}
@@ -216,12 +243,44 @@ export default function LoginPage() {
 									className="w-full rounded-lg border border-white/15 bg-white/5 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-[#FF2D6B]"
 								/>
 							</div>
+							{/* Campo città con autocomplete API */}
+							<div className="relative" ref={cityRef}>
+								<MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+								<input
+									value={city}
+									onChange={(e) => handleCityChange(e.target.value)}
+									onFocus={() => { if (city.length >= 2) fetchCities(city) }}
+									placeholder="Città (facoltativo)"
+									autoComplete="off"
+									className="w-full rounded-lg border border-white/15 bg-white/5 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-[#FF2D6B]"
+								/>
+								{cityOpen && citySuggestions.length > 0 && (
+									<ul className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-white/10 bg-[#1a1a22] shadow-xl">
+										{cityLoading && (
+											<li className="px-3 py-2 text-xs text-white/30">Cerco…</li>
+										)}
+										{citySuggestions.map((c) => (
+											<li key={c}>
+												<button
+													type="button"
+													onClick={() => {
+														setCity(c)
+														setCityOpen(false)
+													}}
+													className="w-full px-3 py-2 text-left text-sm text-white/70 hover:bg-white/10 hover:text-white transition"
+												>
+													{c}
+												</button>
+											</li>
+										))}
+									</ul>
+								)}
+							</div>
 						</>
 					)}
 
 					{error && <p className="text-sm text-red-400">{error}</p>}
 
-					{/* Bottone principale */}
 					<button
 						onClick={
 							mode === "login"
@@ -243,7 +302,6 @@ export default function LoginPage() {
 						{!loading && <ArrowRight className="h-4 w-4" />}
 					</button>
 
-					{/* Toggle magic link */}
 					{mode === "magic" ? (
 						<button
 							type="button"

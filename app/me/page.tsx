@@ -8,6 +8,7 @@ import { useUser } from "@/lib/use-user"
 import { ConcertPoster } from "@/components/concert-poster"
 import { PosterGridSkeleton } from "@/components/skeleton"
 import { ProfileHeader } from "@/components/profile-header"
+import { LogOut } from "lucide-react"
 
 type Profile = {
 	id: string
@@ -64,6 +65,13 @@ export default function ProfilePage() {
 			})
 	}, [user])
 
+	const handleLogout = async () => {
+		const supabase = createClient()
+		if (!supabase) return
+		await supabase.auth.signOut()
+		router.push("/")
+	}
+
 	if (loading) return <main className="p-6">Carico…</main>
 	if (!user)
 		return (
@@ -76,8 +84,9 @@ export default function ProfilePage() {
 		)
 
 	return (
-		<main className="pb-10">
+		<main className="pb-20 sm:pb-10">
 			{profile && <ProfileHeader profile={profile} isOwner={true} />}
+
 			<section className="mx-auto max-w-3xl px-6 pt-6">
 				<h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-white/50">
 					I miei concerti
@@ -105,6 +114,19 @@ export default function ProfilePage() {
 						))}
 					</div>
 				)}
+			</section>
+
+			{/* Logout — visibile sia mobile che desktop */}
+			<section className="mx-auto max-w-3xl px-6 pt-12">
+				<div className="border-t border-white/10 pt-6 flex justify-end">
+					<button
+						onClick={handleLogout}
+						className="inline-flex items-center gap-2 text-sm text-white/40 transition hover:text-white"
+					>
+						<LogOut className="h-4 w-4" />
+						Esci
+					</button>
+				</div>
 			</section>
 		</main>
 	)
