@@ -65,15 +65,21 @@ export default function ProfilePage() {
 				setLoadingLogs(false)
 			})
 
-		// Conta RSVP futuri
-		const today = new Date().toISOString().slice(0, 10)
+		// Conta RSVP per concerti futuri
 		supabase
 			.from("rsvps")
-			.select("id, concerts!inner(date)")
+			.select("concert_id")
 			.eq("user_id", user.id)
-			.gte("concerts.date", today)
-			.then(({ count }) => {
-				setRsvpCount(count ?? 0)
+			.then(async ({ data: rsvps }) => {
+				if (!rsvps || rsvps.length === 0) { setRsvpCount(0); return }
+				const ids = (rsvps as Array<{ concert_id: string }>).map((r) => r.concert_id)
+				const today = new Date().toISOString().slice(0, 10)
+				const { data: concerts } = await supabase
+					.from("concerts")
+					.select("id, date")
+					.in("id", ids)
+					.gte("date", today)
+				setRsvpCount((concerts ?? []).length)
 			})
 	}, [user])
 
