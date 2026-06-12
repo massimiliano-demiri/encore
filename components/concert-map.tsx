@@ -6,6 +6,8 @@ import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Calendar, MapPin, Users } from "lucide-react"
 
+// ---------- tipi ----------
+
 type ConcertMarker = {
 	id: string
 	lat: number
@@ -17,6 +19,8 @@ type ConcertMarker = {
 	rsvpCount: number
 	artistImage: string | null
 }
+
+// ---------- icona artista personalizzata ----------
 
 function createArtistIcon(imageUrl: string | null, name: string): L.DivIcon {
 	const initials = name
@@ -50,22 +54,36 @@ function createArtistIcon(imageUrl: string | null, name: string): L.DivIcon {
 	})
 }
 
-function FitBounds({ markers, userLat, userLng }: { markers: [number, number][]; userLat: number | null; userLng: number | null }) {
+// ---------- FitBounds / aggiorna vista ----------
+
+function FitBounds({ markers, userLat, userLng }: {
+	markers: [number, number][]
+	userLat: number | null
+	userLng: number | null
+}) {
 	const map = useMap()
 	useEffect(() => {
 		if (markers.length === 0) return
-		if (markers.length === 1) {
-			map.setView(markers[0], 12, { animate: true })
+		const allPoints: [number, number][] = [
+			...markers,
+			...(userLat && userLng ? [[userLat, userLng] as [number, number]] : []),
+		]
+		if (allPoints.length === 1) {
+			map.setView(allPoints[0], 11, { animate: true })
 			return
 		}
-		const bounds = L.latLngBounds(markers)
-		map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13, animate: true })
+		const bounds = L.latLngBounds(allPoints)
+		map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11, animate: true })
 	}, [markers, userLat, userLng, map])
 	return null
 }
 
+// ---------- helper formato data ----------
+
 const fmtDate = (d: string) =>
 	new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })
+
+// ---------- componente mappa ----------
 
 export function ConcertMap({
 	markers,
@@ -79,17 +97,14 @@ export function ConcertMap({
 	const defaultCenter: [number, number] =
 		userLat && userLng ? [userLat, userLng] : [41.9028, 12.4964]
 
-	const positions = useMemo(() => markers.map((m) => [m.lat, m.lng] as [number, number]), [markers])
-
-	const mapKey = useMemo(
-		() => markers.map((m) => m.id).join(",") + (userLat ?? "") + (userLng ?? ""),
-		[markers, userLat, userLng],
+	const positions = useMemo(
+		() => markers.map((m) => [m.lat, m.lng] as [number, number]),
+		[markers],
 	)
 
 	return (
 		<div className="h-[420px] w-full overflow-hidden border border-white/10">
 			<MapContainer
-				key={mapKey}
 				center={defaultCenter}
 				zoom={6}
 				className="h-full w-full"
@@ -109,7 +124,9 @@ export function ConcertMap({
 					>
 						<Popup>
 							<div className="min-w-[180px] text-sm">
-								<p className="font-bold mb-1.5 text-base [font-family:var(--font-display)]">{m.name}</p>
+								<p className="font-bold mb-1.5 text-base [font-family:var(--font-display)]">
+									{m.name}
+								</p>
 								<p className="text-xs text-gray-600 flex items-center gap-1">
 									<MapPin className="h-3 w-3" /> {m.venue}, {m.city}
 								</p>

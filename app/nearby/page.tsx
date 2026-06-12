@@ -43,7 +43,7 @@ type NearbyConcert = {
 	lng: number | null
 	distanceKm: number | null
 	artistImage: string | null
-	source: "setlistfm" | "db"
+	source: "setlistfm" | "db" | "ticketmaster"
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -88,17 +88,25 @@ export default function NearbyPage() {
 	const userLat = geo.lat ?? null
 	const userLng = geo.lng ?? null
 
-	// Fetch concerti da Setlist.fm + DB locale
+	// Fetch concerti: Ticketmaster (futuri) + Setlist.fm + DB locale
 	useEffect(() => {
 		const load = async () => {
 			if (!supabase) { setLoading(false); return }
 
 			const today = new Date().toISOString().slice(0, 10)
 
+			// Parametri per le tre fonti
 			const sfParams = new URLSearchParams()
 			if (geo.city) sfParams.set("city", geo.city)
 
-			const [sfRes, { data: dbConcerts }] = await Promise.all([
+			const tmParams = new URLSearchParams()
+			if (userLat != null && userLng != null) {
+				tmParams.set("lat", String(userLat))
+				tmParams.set("lng", String(userLng))
+				tmParams.set("radius", String(MAX_KM))
+			}
+
+			const [sfRes, dbResult, tmRes] = await Promise.all([
 				fetch("/api/nearby-concerts?" + sfParams.toString()).then((r) =>
 					r.ok ? r.json() : { concerts: [] },
 				),
@@ -107,9 +115,46 @@ export default function NearbyPage() {
 					.select("id, date, artists(name, mbid), venues(name, city, lat, lng)")
 					.order("date", { ascending: true })
 					.limit(100),
+				fetch("/api/ticketmaster-events?" + tmParams.toString()).then((r) =>
+					r.ok ? r.json() : { events: [] },
+				),
 			])
 
-			// DB locali
+			const { data: dbConcerts } = dbResult
+
+			// 1) Ticketmaster (fonte primaria per futuri)
+			const tmItems: NearbyConcert[] = ((tmRes.events ?? []) as any[]).map((c: any) => ({
+				id: c.id,
+				date: c.date,
+				artistName: c.artistName,
+				artistMbid: c.artistMbid,
+				venueName: c.venueName,
+				city: c.city,
+				country: c.country,
+				lat: c.lat,
+				lng: c.lng,
+				distanceKm: null,
+				artistImage: c.imageUrl ?? null,
+				source: "ticketmaster" as const,
+			}))
+
+			// 2) Setlist.fm
+			const sfItems: NearbyConcert[] = ((sfRes.concerts ?? []) as any[]).map((c: any) => ({
+				id: c.id,
+				date: c.date,
+				artistName: c.artistName,
+				artistMbid: c.artistMbid,
+				venueName: c.venueName,
+				city: c.city,
+				country: c.country,
+				lat: c.lat,
+				lng: c.lng,
+				distanceKm: null,
+				artistImage: null,
+				source: "setlistfm" as const,
+			}))
+
+			// 3) DB locali
 			const dbItems: NearbyConcert[] = ((dbConcerts ?? []) as unknown as Array<{
 				id: string
 				date: string | null
@@ -130,26 +175,10 @@ export default function NearbyPage() {
 				source: "db" as const,
 			}))
 
-			// Setlist.fm
-			const sfItems: NearbyConcert[] = ((sfRes.concerts ?? []) as any[]).map((c: any) => ({
-				id: c.id,
-				date: c.date,
-				artistName: c.artistName,
-				artistMbid: c.artistMbid,
-				venueName: c.venueName,
-				city: c.city,
-				country: c.country,
-				lat: c.lat,
-				lng: c.lng,
-				distanceKm: null,
-				artistImage: null,
-				source: "setlistfm" as const,
-			}))
-
-			// Unisci + dedup + calcola distanze
+			// Unisci: Ticketmaster prima (priorità), poi Setlist.fm, poi DB
 			const seen = new Set<string>()
 			const merged: NearbyConcert[] = []
-			for (const c of [...sfItems, ...dbItems]) {
+			for (const c of [...tmItems, ...sfItems, ...dbItems]) {
 				const key = c.artistName + "|" + c.venueName + "|" + c.date
 				if (seen.has(key)) continue
 				seen.add(key)
@@ -243,9 +272,11 @@ export default function NearbyPage() {
 		})()
 	}, [supabase, geo.city, geo.loading])
 
-	// Fetch immagini artista (solo se ci sono concerti e non ancora caricati)
+	// Fetch immagini artista (solo per Setlist.fm e DB, Ticketmaster ha già le sue)
 	useEffect(() => {
-		const items = [...nearbyConcerts, ...pastConcerts]
+		const items = [...nearbyConcerts, ...pastConcerts].filter(
+			(c) => c.source !== "ticketmaster" && c.artistImage == null,
+		)
 		if (items.length === 0 || imagesLoaded) return
 		(async () => {
 			const results = await Promise.all(
@@ -270,7 +301,7 @@ export default function NearbyPage() {
 		})()
 	}, [nearbyConcerts.length > 0 && !imagesLoaded])
 
-	// Marker per la mappa (TUTTI i concerti con coordinate, entro il raggio)
+	// Marker per la mappa
 	const allMapMarkers = useMemo(
 		() =>
 			[...nearbyConcerts, ...pastConcerts]
@@ -315,9 +346,7 @@ export default function NearbyPage() {
 				<section className="mb-10">
 					<div className="mb-4 flex items-center gap-2">
 						<MapPin className="h-4 w-4 text-[#FF2D6B]" />
-						<h2 className="text-lg font-bold text-white [font-family:var(--font-display)]">
-							Mappa
-						</h2>
+						<h2 className="text-lg font-bold text-white [font-family:var(--font-display)]">Mappa</h2>
 						<span className="text-xs text-white/30">{allMapMarkers.length} concerti</span>
 					</div>
 					<ConcertMap markers={allMapMarkers} userLat={userLat} userLng={userLng} />
@@ -340,9 +369,18 @@ export default function NearbyPage() {
 								href={"/concert/" + c.id}
 								className="group flex items-center gap-4 border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.04]"
 							>
-								<div className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#17171F] text-white/30">
-									<Calendar className="h-5 w-5" />
-								</div>
+								{/* Foto artista (Ticketmaster) o icona calendario */}
+								{c.artistImage && c.source === "ticketmaster" ? (
+									<img
+										src={c.artistImage}
+										alt={c.artistName}
+										className="h-12 w-12 shrink-0 rounded object-cover"
+									/>
+								) : (
+									<div className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#17171F] text-white/30">
+										<Calendar className="h-5 w-5" />
+									</div>
+								)}
 								<div className="min-w-0 flex-1">
 									<p className="font-semibold text-white group-hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
 										{c.artistName}
@@ -351,10 +389,15 @@ export default function NearbyPage() {
 										{c.venueName}
 										{c.city ? ", " + c.city : ""}
 									</p>
-									<div className="mt-1 flex items-center gap-3 text-xs">
+									<div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
 										<span className="text-white/40">{fmtDate(c.date)}</span>
 										{c.distanceKm != null && (
 											<span className="text-white/30">{Math.round(c.distanceKm)} km</span>
+										)}
+										{c.source === "ticketmaster" && (
+											<span className="rounded-full bg-[#FF2D6B]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#FF2D6B]">
+												Ticketmaster
+											</span>
 										)}
 									</div>
 								</div>
@@ -364,7 +407,7 @@ export default function NearbyPage() {
 				</section>
 			)}
 
-			{/* PASSATI (compressi) */}
+			{/* PASSATI */}
 			{pastConcerts.length > 0 && (
 				<section className="mb-10">
 					<div className="mb-4 flex items-center gap-2">
