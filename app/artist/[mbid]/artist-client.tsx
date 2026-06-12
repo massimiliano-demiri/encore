@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useUser } from "@/lib/use-user"
 import { LogConcert } from "@/components/ui/log-concert"
+import { RsvpButton } from "@/components/rsvp-button"
 import { ArtistImage } from "@/components/artsit-image"
 import { Skeleton } from "@/components/skeleton"
-import { ArrowLeft, MapPin, Calendar, ChevronDown } from "lucide-react"
+import { ArrowLeft, MapPin, Calendar, ChevronDown, Ticket } from "lucide-react"
 
 type Concert = {
 	id: string
@@ -14,9 +15,10 @@ type Concert = {
 	venue: string
 	city: string
 	country: string
+	source?: string
 }
 
-const fmtDate = (d: string | null) => {
+const fmtDate = (d: string | null): string => {
 	if (!d) return "data sconosciuta"
 	const t = new Date(d)
 	return isNaN(t.getTime()) ? d : t.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })
@@ -26,6 +28,7 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 	const { user } = useUser()
 	const [artist, setArtist] = useState("")
 	const [concerts, setConcerts] = useState<Concert[]>([])
+	const [upcoming, setUpcoming] = useState<Concert[]>([])
 	const [loading, setLoading] = useState(true)
 	const [page, setPage] = useState(1)
 	const [total, setTotal] = useState(0)
@@ -34,27 +37,31 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 
 	const today = new Date().toISOString().slice(0, 10)
 
-	const { upcoming, past } = useMemo(() => {
+	const { upcomingFromSetlist, past } = useMemo(() => {
 		const u: Concert[] = []
 		const p: Concert[] = []
 		for (const c of concerts) {
 			if (c.date && c.date >= today) u.push(c)
 			else p.push(c)
 		}
-		return { upcoming: u, past: p }
+		return { upcomingFromSetlist: u, past: p }
 	}, [concerts, today])
 
+	const allUpcoming = [...upcoming, ...upcomingFromSetlist]
 	const hasMore = concerts.length < total
+	const displayedPast = showAllPast ? past : past.slice(0, 5)
 
 	useEffect(() => {
 		setLoading(true)
 		setConcerts([])
+		setUpcoming([])
 		setPage(1)
 		fetch("/api/artists/" + mbid + "/concerts?p=1")
 			.then((r) => r.json())
-			.then((d) => {
+			.then((d: { artist: string; concerts: Concert[]; upcoming: Concert[]; total: number }) => {
 				setArtist(d.artist)
-				setConcerts(d.concerts)
+				setConcerts(d.concerts ?? [])
+				setUpcoming(d.upcoming ?? [])
 				setTotal(d.total ?? 0)
 				setLoading(false)
 			})
@@ -73,11 +80,8 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 		setLoadingMore(false)
 	}
 
-	const displayedPast = showAllPast ? past : past.slice(0, 5)
-
 	return (
 		<main className="pb-10">
-			{/* Hero */}
 			<div className="relative h-64 w-full overflow-hidden">
 				<ArtistImage name={artist} mbid={mbid} className="absolute inset-0 h-full w-full" />
 				<div className="absolute inset-0 bg-gradient-to-t from-[#0E0E12] via-[#0E0E12]/60 to-transparent" />
@@ -94,37 +98,58 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 			</div>
 
 			<div className="mx-auto flex max-w-2xl flex-col gap-8 p-6">
-				{/* Loading */}
 				{loading ? (
 					<div className="flex flex-col gap-3">
 						{[...Array(4)].map((_, i) => (
 							<div key={i} className="h-20 animate-pulse border-l-2 border-white/5 bg-white/[0.02]" />
 						))}
 					</div>
-				) : concerts.length === 0 ? (
-					<div className="border-l-2 border-white/5 py-4 pl-5 text-white/40">
-						Nessun concerto trovato.
-					</div>
+				) : concerts.length === 0 && upcoming.length === 0 ? (
+					<div className="border-l-2 border-white/5 py-4 pl-5 text-white/40">Nessun concerto trovato.</div>
 				) : (
 					<>
-						{/* Prossimi concerti */}
-						{upcoming.length > 0 && (
+						{allUpcoming.length > 0 && (
 							<div>
 								<div className="mb-4 flex items-center gap-3">
-									<div className="h-px w-6 bg-white/10" />
-									<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">
-										Prossimi ({upcoming.length})
+									<div className="h-px w-6 bg-[#FFC24B]/40" />
+									<span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#FFC24B]">
+										Prossimi ({allUpcoming.length})
 									</span>
 								</div>
 								<div className="flex flex-col gap-3">
-									{upcoming.map((c) => (
-										<ConcertCard key={c.id} c={c} user={user} />
+									{allUpcoming.map((c: Concert) => (
+										<div
+											key={c.id}
+											className="border-l-2 border-[#FFC24B]/20 bg-white/[0.02] py-4 pl-5 transition hover:border-[#FFC24B]/50"
+										>
+											<div className="flex items-center justify-between">
+												<div>
+													<div className="font-semibold text-white [font-family:var(--font-display)]">{c.venue}</div>
+													<div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/45">
+														<span className="inline-flex items-center gap-1.5">
+															<MapPin className="h-3.5 w-3.5" /> {c.city}
+															{c.country ? ", " + c.country : ""}
+														</span>
+														<span className="inline-flex items-center gap-1.5">
+															<Calendar className="h-3.5 w-3.5" /> {fmtDate(c.date)}
+														</span>
+														{c.source === "ticketmaster" && (
+															<span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#FFC24B] uppercase">
+																<Ticket className="h-3 w-3" /> Ticketmaster
+															</span>
+														)}
+													</div>
+												</div>
+												<div className="shrink-0">
+													<RsvpButton concertId={c.id} concertDate={c.date} />
+												</div>
+											</div>
+										</div>
 									))}
 								</div>
 							</div>
 						)}
 
-						{/* Passati */}
 						{past.length > 0 && (
 							<div>
 								<div className="mb-4 flex items-center gap-3">
@@ -134,7 +159,7 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 									</span>
 								</div>
 								<div className="flex flex-col gap-3">
-									{displayedPast.map((c) => (
+									{displayedPast.map((c: Concert) => (
 										<ConcertCard key={c.id} c={c} user={user} />
 									))}
 								</div>
@@ -152,21 +177,13 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 					</>
 				)}
 
-				{/* Carica altre pagine (se Setlist.fm ha più dati) */}
 				{!loading && hasMore && (
 					<button
 						onClick={loadMore}
 						disabled={loadingMore}
 						className="mt-2 inline-flex w-full items-center justify-center gap-2 border border-white/10 py-3 text-sm text-white/50 transition hover:text-white hover:border-white/25 disabled:opacity-40"
 					>
-						{loadingMore ? (
-							"Carico…"
-						) : (
-							<>
-								<ChevronDown className="h-4 w-4" />
-								Carica altri concerti
-							</>
-						)}
+						{loadingMore ? "Carico…" : <><ChevronDown className="h-4 w-4" /> Carica altri concerti</>}
 					</button>
 				)}
 			</div>
@@ -174,7 +191,6 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 	)
 }
 
-/* ── Card concerto (estratto) ── */
 function ConcertCard({ c, user }: { c: Concert; user: any }) {
 	return (
 		<div className="border-l-2 border-white/10 bg-white/[0.02] py-4 pl-5 transition hover:border-[#FF2D6B]/30">
@@ -190,13 +206,10 @@ function ConcertCard({ c, user }: { c: Concert; user: any }) {
 			</div>
 			{user ? (
 				<div className="mt-3">
-					<LogConcert concertId={c.id} />
+					<LogConcert concertId={c.id} concertDate={c.date} />
 				</div>
 			) : (
-				<Link
-					href="/login"
-					className="mt-3 inline-block text-sm text-white/50 underline hover:text-white transition"
-				>
+				<Link href="/login" className="mt-3 inline-block text-sm text-white/50 underline hover:text-white transition">
 					Accedi per dire "c'ero"
 				</Link>
 			)}

@@ -8,7 +8,7 @@ import { useUser } from "@/lib/use-user"
 import { ConcertPoster } from "@/components/concert-poster"
 import { PosterGridSkeleton } from "@/components/skeleton"
 import { ProfileHeader } from "@/components/profile-header"
-import { LogOut, Sparkles } from "lucide-react"
+import { LogOut, Sparkles, Ticket } from "lucide-react"
 
 type Profile = {
 	id: string
@@ -37,6 +37,7 @@ export default function ProfilePage() {
 	const [profile, setProfile] = useState<Profile | null>(null)
 	const [logs, setLogs] = useState<Log[]>([])
 	const [loadingLogs, setLoadingLogs] = useState(true)
+	const [rsvpCount, setRsvpCount] = useState(0)
 
 	useEffect(() => {
 		if (!user) return
@@ -62,6 +63,17 @@ export default function ProfilePage() {
 			.then(({ data }) => {
 				setLogs((data as unknown as Log[]) ?? [])
 				setLoadingLogs(false)
+			})
+
+		// Conta RSVP futuri
+		const today = new Date().toISOString().slice(0, 10)
+		supabase
+			.from("rsvps")
+			.select("id, concerts!inner(date)")
+			.eq("user_id", user.id)
+			.gte("concerts.date", today)
+			.then(({ count }) => {
+				setRsvpCount(count ?? 0)
 			})
 	}, [user])
 
@@ -118,6 +130,19 @@ export default function ProfilePage() {
 				)}
 			</section>
 
+			{/* Watchlist link */}
+			{rsvpCount > 0 && (
+				<section className="mx-auto max-w-3xl px-6 pt-6">
+					<Link
+						href="/me/rsvps"
+						className="inline-flex items-center gap-2 text-sm text-[#FFC24B] transition hover:text-[#FFD84B]"
+					>
+						<Ticket className="h-4 w-4" />
+						Parteciperò a {rsvpCount} {rsvpCount === 1 ? "concerto" : "concerti"}
+					</Link>
+				</section>
+			)}
+
 			{/* Wrapped + Logout */}
 			{logs.length > 0 && (
 				<section className="mx-auto max-w-3xl px-6 pt-10">
@@ -141,8 +166,7 @@ export default function ProfilePage() {
 				</section>
 			)}
 
-			{/* Solo logout (se nessun concerto) */}
-			{logs.length === 0 && (
+			{logs.length === 0 && rsvpCount === 0 && (
 				<section className="mx-auto max-w-3xl px-6 pt-12">
 					<div className="border-t border-white/10 pt-6 flex justify-end">
 						<button

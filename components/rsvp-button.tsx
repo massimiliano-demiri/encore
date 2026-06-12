@@ -5,12 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { CalendarCheck, Calendar } from "lucide-react"
 
-type RsvpButtonProps = {
-	concertId: string
-	concertDate: string | null
-}
-
-export function RsvpButton({ concertId, concertDate }: RsvpButtonProps) {
+export function RsvpButton({ concertId, concertDate }: { concertId: string; concertDate: string | null }) {
 	const { user } = useUser()
 	const supabase = createClient()
 	const [going, setGoing] = useState(false)
@@ -18,7 +13,6 @@ export function RsvpButton({ concertId, concertDate }: RsvpButtonProps) {
 	const [busy, setBusy] = useState(false)
 	const [ready, setReady] = useState(false)
 
-	// È un concerto futuro?
 	const isFuture = concertDate ? new Date(concertDate) > new Date() : false
 
 	useEffect(() => {
@@ -62,15 +56,9 @@ export function RsvpButton({ concertId, concertDate }: RsvpButtonProps) {
 					: "border-white/15 bg-white/[0.03] text-white/70 hover:border-[#FF2D6B]/40 hover:text-[#FF2D6B]"
 			}`}
 		>
-			{going ? (
-				<CalendarCheck className="h-4 w-4" />
-			) : (
-				<Calendar className="h-4 w-4" />
-			)}
+			{going ? <CalendarCheck className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
 			{going ? "Parteciperò" : "Parteciperò"}
-			{count > 0 && (
-				<span className="ml-1 text-xs opacity-70">({count})</span>
-			)}
+			{count > 0 && <span className="ml-1 text-xs opacity-70">({count})</span>}
 		</button>
 	)
 }
