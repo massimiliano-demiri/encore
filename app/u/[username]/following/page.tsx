@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { useUser } from "@/lib/use-user"
+import { FollowButton } from "@/components/follow-button"
 import { Users, ChevronRight, ArrowLeft } from "lucide-react"
 
 type FollowingCard = {
@@ -18,6 +20,7 @@ type FollowingCard = {
 
 export default function FollowingPage() {
 	const { username } = useParams<{ username: string }>()
+	const { user } = useUser()
 	const supabase = createClient()
 	const [following, setFollowing] = useState<FollowingCard[]>([])
 	const [loading, setLoading] = useState(true)
@@ -71,28 +74,34 @@ export default function FollowingPage() {
 						const card = f.following
 						if (!card) return null
 						const initials = (card.display_name || card.username || "?").trim().slice(0, 2).toUpperCase()
+						const isMe = user?.id === card.id
 						return (
-							<Link
+							<div
 								key={card.id}
-								href={"/u/" + (card.username ?? "")}
-								className="group flex items-center gap-4 border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.04]"
+								className="flex items-center gap-4 border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25"
 							>
-								{card.avatar_url ? (
-									<img src={card.avatar_url} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
-								) : (
-									<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-sm font-bold text-white">
-										{initials}
+								<Link href={"/u/" + (card.username ?? "")} className="flex items-center gap-4 min-w-0 flex-1 group">
+									{card.avatar_url ? (
+										<img src={card.avatar_url} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
+									) : (
+										<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-sm font-bold text-white">
+											{initials}
+										</div>
+									)}
+									<div className="min-w-0 flex-1">
+										<span className="font-semibold text-white group-hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
+											{card.display_name || card.username}
+										</span>
+										<p className="text-xs text-white/40">@{card.username}</p>
+										{card.bio && <p className="mt-1 line-clamp-1 text-sm text-white/50">{card.bio}</p>}
+									</div>
+								</Link>
+								{!isMe && (
+									<div className="shrink-0">
+										<FollowButton profileId={card.id} />
 									</div>
 								)}
-								<div className="min-w-0 flex-1">
-									<span className="font-semibold text-white group-hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
-										{card.display_name || card.username}
-									</span>
-									<p className="text-xs text-white/40">@{card.username}</p>
-									{card.bio && <p className="mt-1 line-clamp-1 text-sm text-white/50">{card.bio}</p>}
-								</div>
-								<ChevronRight className="h-4 w-4 shrink-0 text-white/20 group-hover:text-white/50 transition-colors" />
-							</Link>
+							</div>
 						)
 					})}
 				</div>
