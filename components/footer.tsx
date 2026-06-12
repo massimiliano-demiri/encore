@@ -35,8 +35,9 @@ export function Footer() {
 
 			<div className="mt-10 pt-6 border-t border-white/5 flex flex-col gap-2 sm:flex-row sm:justify-between">
 				<p className="text-xs text-white/25">
-					&copy; {new Date().getFullYear()} Encore &mdash; Il diario dei concerti. Made in Italy.
-				</p>
+	&copy; {new Date().getFullYear()} Encore &mdash; Il diario dei concerti. 
+	<span className="text-white/15"> Creato da Massimiliano Demiri</span>
+</p>
 				<p className="text-xs text-white/20">
 					Dati forniti da Setlist.fm, MusicBrainz e Ticketmaster.
 				</p>

@@ -31,7 +31,6 @@ export function NavBar() {
 		router.push("/")
 	}
 
-	// Poll conteggio notifiche non lette
 	useEffect(() => {
 		if (!supabase || !user) { setUnread(0); return }
 		const check = async () => {
@@ -46,7 +45,7 @@ export function NavBar() {
 			} catch { /* ignore */ }
 		}
 		check()
-		const interval = setInterval(check, 30000) // ogni 30 secondi
+		const interval = setInterval(check, 30000)
 		return () => clearInterval(interval)
 	}, [supabase, user])
 
@@ -72,8 +71,6 @@ export function NavBar() {
 								{l.label}
 							</Link>
 						))}
-
-						{/* Notifiche (solo se loggato) */}
 						{user && (
 							<Link
 								href="/notifications"
@@ -90,7 +87,6 @@ export function NavBar() {
 								)}
 							</Link>
 						)}
-
 						{user ? (
 							<button
 								onClick={handleLogout}
@@ -112,15 +108,15 @@ export function NavBar() {
 				</div>
 			</header>
 
-			{/* Mobile bottom bar */}
-			<nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#0E0E12]/90 backdrop-blur sm:hidden">
+			{/* Mobile bottom bar — fissata in fondo, senza margini, safe-area */}	
+			<nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#0E0E12] pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
 				<div className="flex items-stretch justify-around">
 					{links.slice(0, 4).map((l) => (
 						<Link
 							key={l.href}
 							href={l.href}
 							className={
-								"flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] transition " +
+								"flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] transition " +
 								(isActive(l.href) ? "text-[#FF2D6B]" : "text-white/55")
 							}
 						>
@@ -128,13 +124,11 @@ export function NavBar() {
 							{l.label}
 						</Link>
 					))}
-
-					{/* Notifiche mobile */}
 					{user && (
 						<Link
 							href="/notifications"
 							className={
-								"relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] transition " +
+								"relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] transition " +
 								(isActive("/notifications") ? "text-[#FF2D6B]" : "text-white/55")
 							}
 						>
@@ -146,14 +140,12 @@ export function NavBar() {
 							)}
 						</Link>
 					)}
-
-					{/* Profilo mobile (ultimi 2 link) */}
 					{links.slice(4).map((l) => (
 						<Link
 							key={l.href}
 							href={l.href}
 							className={
-								"flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] transition " +
+								"flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] transition " +
 								(isActive(l.href) ? "text-[#FF2D6B]" : "text-white/55")
 							}
 						>
