@@ -6,23 +6,26 @@ export async function GET(
 	{ params }: { params: Promise<{ mbid: string }> },
 ) {
 	const { mbid } = await params
+	const { searchParams } = new URL(_request.url)
+	const page = parseInt(searchParams.get("p") ?? "1", 10) || 1
 
 	try {
-		const url = "https://api.setlist.fm/rest/1.0/artist/" + mbid + "/setlists?p=1"
+		const url = "https://api.setlist.fm/rest/1.0/artist/" + mbid + "/setlists?p=" + page
 		const res = await fetch(url, {
 			headers: {
 				"x-api-key": process.env.SETLISTFM_API_KEY ?? "",
 				Accept: "application/json",
 			},
 		})
-		if (!res.ok) return NextResponse.json({ artist: "", concerts: [] })
+		if (!res.ok) return NextResponse.json({ artist: "", concerts: [], page, total: 0 })
 
 		const data = await res.json()
 		const setlists = data.setlist ?? []
+		const total = data.total ?? 0
+		const itemsPerPage = data.itemsPerPage ?? 20
 
 		const supabaseAdmin = getSupabaseAdmin()
 		if (!supabaseAdmin) {
-			// Senza Supabase admin, restituisco i concerti grezzi senza salvarli
 			const first = setlists[0]
 			const concerts = setlists.map((s: any) => ({
 				id: s.id,
@@ -31,10 +34,9 @@ export async function GET(
 				city: s.venue?.city?.name ?? "",
 				country: s.venue?.city?.country?.name ?? "",
 			}))
-			return NextResponse.json({ artist: first?.artist?.name ?? "", concerts })
+			return NextResponse.json({ artist: first?.artist?.name ?? "", concerts, page, total, itemsPerPage })
 		}
 
-		// 1) Salva/aggiorna l'artista
 		const first = setlists[0]
 		if (first?.artist) {
 			await supabaseAdmin
@@ -50,7 +52,6 @@ export async function GET(
 			const v = s.venue
 			let venueId: string | null = null
 
-			// 2) Salva/aggiorna la venue
 			if (v?.id) {
 				await supabaseAdmin.from("venues").upsert({
 					setlistfm_id: v.id,
@@ -68,7 +69,6 @@ export async function GET(
 
 			const isoDate = toIso(s.eventDate)
 
-			// 3) Salva/aggiorna il concerto
 			const { data: concertRow } = await supabaseAdmin
 				.from("concerts")
 				.upsert({
@@ -90,10 +90,10 @@ export async function GET(
 			})
 		}
 
-		return NextResponse.json({ artist: first?.artist?.name ?? "", concerts })
+		return NextResponse.json({ artist: first?.artist?.name ?? "", concerts, page, total, itemsPerPage })
 	} catch (err) {
 		console.error("Setlist.fm error:", err)
-		return NextResponse.json({ artist: "", concerts: [] })
+		return NextResponse.json({ artist: "", concerts: [], page, total: 0 })
 	}
 }
 
