@@ -10,7 +10,7 @@ type GeoState = {
 	error: string | null
 }
 
-export function useGeolocation() {
+export function useGeolocation(fallbackCity?: string | null) {
 	const [state, setState] = useState<GeoState>({
 		city: null,
 		lat: null,
@@ -21,7 +21,12 @@ export function useGeolocation() {
 
 	useEffect(() => {
 		if (!("geolocation" in navigator)) {
-			setState((s) => ({ ...s, loading: false, error: "Geolocalizzazione non supportata dal browser." }))
+			setState((s) => ({
+				...s,
+				city: fallbackCity ?? null,
+				loading: false,
+				error: "Geolocalizzazione non supportata dal browser.",
+			}))
 			return
 		}
 
@@ -46,17 +51,22 @@ export function useGeolocation() {
 							: null
 						setState({ city, lat: latitude, lng: longitude, loading: false, error: null })
 					} else {
-						setState({ city: null, lat: latitude, lng: longitude, loading: false, error: null })
+						setState({ city: fallbackCity ?? null, lat: latitude, lng: longitude, loading: false, error: null })
 					}
 				} catch {
-					setState({ city: null, lat: latitude, lng: longitude, loading: false, error: null })
+					setState({ city: fallbackCity ?? null, lat: latitude, lng: longitude, loading: false, error: null })
 				}
 			},
 			() => {
-				setState((s) => ({ ...s, loading: false, error: "Permesso geolocalizzazione negato." }))
+				setState((s) => ({
+					...s,
+					city: fallbackCity ?? null,
+					loading: false,
+					error: "Permesso geolocalizzazione negato.",
+				}))
 			},
 		)
-	}, [])
+	}, [fallbackCity])
 
 	return state
 }

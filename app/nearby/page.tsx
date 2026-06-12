@@ -359,7 +359,7 @@ export default function NearbyPage() {
 					<div className="mb-4 flex items-center gap-2">
 						<Calendar className="h-4 w-4 text-[#FFC24B]" />
 						<h2 className="text-lg font-bold text-white [font-family:var(--font-display)]">
-							Prossimi {geo.city ? "a " + geo.city : "in Italia"}
+							Prossimi {geo.city ? "nei dintorni di " + geo.city : "in Italia"}
 						</h2>
 					</div>
 					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

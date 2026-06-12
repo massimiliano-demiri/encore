@@ -36,4 +36,4 @@ export async function GET(request: Request) {
 
 	const matches = all.filter((c) => c.toLowerCase().includes(q)).slice(0, 20)
 	return NextResponse.json({ cities: matches })
-}
+}   
