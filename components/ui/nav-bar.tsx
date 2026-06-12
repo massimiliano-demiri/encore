@@ -1,8 +1,9 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, Search, Newspaper, User, ListMusic, LogOut, LogIn, MapPin } from "lucide-react"
+import { Home, Search, Newspaper, User, ListMusic, LogOut, LogIn, MapPin, Bell } from "lucide-react"
 import { useUser } from "@/lib/use-user"
 import { createClient } from "@/lib/supabase/client"
 
@@ -20,6 +21,7 @@ export function NavBar() {
 	const router = useRouter()
 	const { user } = useUser()
 	const supabase = createClient()
+	const [unread, setUnread] = useState(0)
 
 	const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
 
@@ -28,6 +30,25 @@ export function NavBar() {
 		await supabase.auth.signOut()
 		router.push("/")
 	}
+
+	// Poll conteggio notifiche non lette
+	useEffect(() => {
+		if (!supabase || !user) { setUnread(0); return }
+		const check = async () => {
+			const { data: session } = await supabase.auth.getSession()
+			if (!session?.session) return
+			try {
+				const res = await fetch("/api/notifications/count", {
+					headers: { Authorization: "Bearer " + session.session.access_token },
+				})
+				const json = await res.json()
+				setUnread(json.count ?? 0)
+			} catch { /* ignore */ }
+		}
+		check()
+		const interval = setInterval(check, 30000) // ogni 30 secondi
+		return () => clearInterval(interval)
+	}, [supabase, user])
 
 	return (
 		<>
@@ -51,10 +72,29 @@ export function NavBar() {
 								{l.label}
 							</Link>
 						))}
+
+						{/* Notifiche (solo se loggato) */}
+						{user && (
+							<Link
+								href="/notifications"
+								className={
+									"relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition " +
+									(isActive("/notifications") ? "bg-white/10 text-white" : "text-white/60 hover:text-white")
+								}
+							>
+								<Bell className="h-4 w-4" />
+								{unread > 0 && (
+									<span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#FF2D6B] px-1 text-[10px] font-bold text-white">
+										{unread > 9 ? "9+" : unread}
+									</span>
+								)}
+							</Link>
+						)}
+
 						{user ? (
 							<button
 								onClick={handleLogout}
-								className="ml-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-white/40 transition hover:text-white"
+								className="ml-1 inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 text-sm text-white/40 transition hover:text-white"
 								title="Esci"
 							>
 								<LogOut className="h-4 w-4" />
@@ -75,7 +115,40 @@ export function NavBar() {
 			{/* Mobile bottom bar */}
 			<nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#0E0E12]/90 backdrop-blur sm:hidden">
 				<div className="flex items-stretch justify-around">
-					{links.map((l) => (
+					{links.slice(0, 4).map((l) => (
+						<Link
+							key={l.href}
+							href={l.href}
+							className={
+								"flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] transition " +
+								(isActive(l.href) ? "text-[#FF2D6B]" : "text-white/55")
+							}
+						>
+							<l.Icon className="h-5 w-5" />
+							{l.label}
+						</Link>
+					))}
+
+					{/* Notifiche mobile */}
+					{user && (
+						<Link
+							href="/notifications"
+							className={
+								"relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] transition " +
+								(isActive("/notifications") ? "text-[#FF2D6B]" : "text-white/55")
+							}
+						>
+							<Bell className="h-5 w-5" />
+							{unread > 0 && (
+								<span className="absolute right-2 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#FF2D6B] px-1 text-[10px] font-bold text-white">
+									{unread > 9 ? "9+" : unread}
+								</span>
+							)}
+						</Link>
+					)}
+
+					{/* Profilo mobile (ultimi 2 link) */}
+					{links.slice(4).map((l) => (
 						<Link
 							key={l.href}
 							href={l.href}
