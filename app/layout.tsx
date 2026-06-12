@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { NavBar } from "@/components/ui/nav-bar"
-
+import { Footer } from "@/components/footer"
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const spaceGrotesk = Space_Grotesk({
 	subsets: ["latin"],
@@ -29,6 +29,7 @@ export default function RootLayout({
 			<body className="min-h-screen bg-[#0E0E12] text-[#F4F4F6] antialiased [font-family:var(--font-inter)] pb-16 sm:pb-0">
 				<NavBar />
 				{children}
+				<Footer />
 			</body>
 		</html>
 	)
