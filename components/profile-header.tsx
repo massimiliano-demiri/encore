@@ -65,20 +65,39 @@ export function ProfileHeader({ profile, isOwner }: { profile: Profile; isOwner:
 					)}
 				</div>
 			</div>
+
 			<div className="mt-6 flex justify-center gap-8 border-y border-white/10 py-4 sm:justify-start">
 				<Stat value={stats.concerts} label="Concerti" />
-				<Stat value={stats.followers} label="Follower" />
-				<Stat value={stats.following} label="Seguiti" />
+				<Stat
+					value={stats.followers}
+					label="Follower"
+					href={profile.username ? "/u/" + profile.username + "/followers" : undefined}
+				/>
+				<Stat
+					value={stats.following}
+					label="Seguiti"
+					href={profile.username ? "/u/" + profile.username + "/following" : undefined}
+				/>
 			</div>
 		</header>
 	)
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
-	return (
+function Stat({ value, label, href }: { value: number; label: string; href?: string }) {
+	const content = (
 		<div className="text-center">
 			<div className="text-xl font-bold">{value}</div>
 			<div className="text-xs uppercase tracking-wide text-white/50">{label}</div>
 		</div>
 	)
+
+	if (href) {
+		return (
+			<Link href={href} className="transition hover:opacity-70">
+				{content}
+			</Link>
+		)
+	}
+
+	return content
 }
