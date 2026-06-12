@@ -85,8 +85,24 @@ export default function NearbyPage() {
 	const [loading, setLoading] = useState(true)
 	const [imagesLoaded, setImagesLoaded] = useState(false)
 
-	const userLat = geo.lat ?? null
-	const userLng = geo.lng ?? null
+	const [profileCity, setProfileCity] = useState<string | null>(null)
+
+// Se l'utente è loggato, fetcha la città dal profilo (fallback se GPS negato)
+useEffect(() => {
+	if (!supabase || !user) return
+	supabase
+		.from("profiles")
+		.select("city")
+		.eq("id", user.id)
+		.maybeSingle()
+		.then(({ data }) => {
+			setProfileCity((data as unknown as { city: string | null })?.city ?? null)
+		})
+}, [supabase, user])
+
+const userCity = geo.city || profileCity
+const userLat = geo.lat ?? null
+const userLng = geo.lng ?? null
 
 	// Fetch concerti: Ticketmaster (futuri) + Setlist.fm + DB locale
 	useEffect(() => {
@@ -322,7 +338,7 @@ export default function NearbyPage() {
 
 	if (loading || geo.loading) return <main className="mx-auto max-w-2xl p-6">Carico…</main>
 
-	return (
+		return (
 		<main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
 			<div className="mb-6 flex items-center gap-3">
 				<div className="h-px w-6 bg-white/10" />
@@ -331,13 +347,17 @@ export default function NearbyPage() {
 			<h1 className="mb-1 text-3xl font-bold [font-family:var(--font-display)]">
 				Cosa succede vicino a te
 			</h1>
-			{geo.city ? (
+			{userCity ? (
 				<p className="mb-8 flex items-center gap-1.5 text-sm text-[#FF2D6B]">
-					<Navigation className="h-3.5 w-3.5" /> Rilevata: {geo.city} · {MAX_KM}km di raggio
+					<Navigation className="h-3.5 w-3.5" />
+					{geo.city ? "Rilevata: " + geo.city : "Città: " + userCity}
+					{userLat && userLng && " · " + MAX_KM + "km di raggio"}
 				</p>
 			) : (
 				<p className="mb-8 text-sm text-white/40">
-					{geo.error || "Concedi la geolocalizzazione per vedere i concerti vicino a te."}
+					{!user
+						? "Accedi o concedi la geolocalizzazione per vedere i concerti vicino a te."
+						: geo.error || "Imposta la tua città nel profilo per attivare la zona."}
 				</p>
 			)}
 
@@ -359,7 +379,7 @@ export default function NearbyPage() {
 					<div className="mb-4 flex items-center gap-2">
 						<Calendar className="h-4 w-4 text-[#FFC24B]" />
 						<h2 className="text-lg font-bold text-white [font-family:var(--font-display)]">
-							Prossimi {geo.city ? "nei dintorni di " + geo.city : "in Italia"}
+							Prossimi {userCity ? "nei dintorni di " + userCity : "in Italia"}
 						</h2>
 					</div>
 					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -369,13 +389,8 @@ export default function NearbyPage() {
 								href={"/concert/" + c.id}
 								className="group flex items-center gap-4 border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.04]"
 							>
-								{/* Foto artista (Ticketmaster) o icona calendario */}
 								{c.artistImage && c.source === "ticketmaster" ? (
-									<img
-										src={c.artistImage}
-										alt={c.artistName}
-										className="h-12 w-12 shrink-0 rounded object-cover"
-									/>
+									<img src={c.artistImage} alt={c.artistName} className="h-12 w-12 shrink-0 rounded object-cover" />
 								) : (
 									<div className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#17171F] text-white/30">
 										<Calendar className="h-5 w-5" />
@@ -412,9 +427,7 @@ export default function NearbyPage() {
 				<section className="mb-10">
 					<div className="mb-4 flex items-center gap-2">
 						<Calendar className="h-4 w-4 text-white/20" />
-						<h2 className="text-lg font-bold text-white/50 [font-family:var(--font-display)]">
-							Già passati
-						</h2>
+						<h2 className="text-lg font-bold text-white/50 [font-family:var(--font-display)]">Già passati</h2>
 						<span className="text-xs text-white/20">{pastConcerts.length}</span>
 					</div>
 					<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 opacity-50">
@@ -454,7 +467,7 @@ export default function NearbyPage() {
 								<MapPin className="h-4 w-4 text-[#FF2D6B]" />
 								<h2 className="text-lg font-bold text-white [font-family:var(--font-display)]">
 									{city}
-									{geo.city && geo.city.toLowerCase() === city.toLowerCase() && (
+									{userCity && userCity.toLowerCase() === city.toLowerCase() && (
 										<span className="ml-2 text-xs font-normal text-[#FF2D6B] uppercase tracking-wider">
 											La tua zona
 										</span>
