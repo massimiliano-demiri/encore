@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { ArtistImage } from "@/components/artsit-image"
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/skeleton"
 import { LogConcert } from "@/components/ui/log-concert"
 import { Setlist } from "@/components/setlist"
 import { ConcertPhotos } from "@/components/concert-photos"
+import { RsvpButton } from "@/components/rsvp-button"
 import { Star, ListMusic, MessageSquare, Users } from "lucide-react"
 import { AddToList } from "@/components/add-to-list"
 import { ReviewLikes } from "@/components/review-likes"
@@ -75,6 +76,17 @@ export function ConcertClient({ id }: { id: string }) {
 		load()
 	}, [id, supabase])
 
+	// Deduplica attendee per username
+	const uniqueAttendees = useMemo(() => {
+		const seen = new Set<string>()
+		return attendees.filter((a) => {
+			const key = a.profiles?.username ?? a.profiles?.display_name ?? ""
+			if (!key || seen.has(key)) return false
+			seen.add(key)
+			return true
+		})
+	}, [attendees])
+
 	if (loading)
 		return (
 			<main className="pb-10">
@@ -114,7 +126,7 @@ export function ConcertClient({ id }: { id: string }) {
 			</div>
 
 			<div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
-				<div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+				<div className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
 					{avg ? (
 						<>
 							<div className="flex items-baseline gap-1">
@@ -128,16 +140,19 @@ export function ConcertClient({ id }: { id: string }) {
 					) : (
 						<span className="text-sm text-white/50">Ancora nessun voto</span>
 					)}
+
+					{/* RSVP — solo per concerti futuri */}
+					<RsvpButton concertId={concert.id} concertDate={concert.date} />
 				</div>
 
 				{/* Chi altro c'era */}
-				{attendees.length > 0 && (
+				{uniqueAttendees.length > 0 && (
 					<div>
 						<h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-white/50">
-							<Users className="h-4 w-4" /> Chi altro c'era ({attendees.length})
+							<Users className="h-4 w-4" /> Chi altro c'era ({uniqueAttendees.length})
 						</h2>
 						<div className="flex flex-wrap gap-2">
-							{attendees.map((a, i) => {
+							{uniqueAttendees.map((a, i) => {
 								const name = a.profiles?.display_name || a.profiles?.username || "Anonimo"
 								const initials = name.trim().slice(0, 2).toUpperCase()
 								const href = a.profiles?.username ? "/u/" + a.profiles.username : "#"

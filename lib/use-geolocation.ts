@@ -4,23 +4,31 @@ import { useEffect, useState } from "react"
 
 type GeoState = {
 	city: string | null
+	lat: number | null
+	lng: number | null
 	loading: boolean
 	error: string | null
 }
 
 export function useGeolocation() {
-	const [state, setState] = useState<GeoState>({ city: null, loading: true, error: null })
+	const [state, setState] = useState<GeoState>({
+		city: null,
+		lat: null,
+		lng: null,
+		loading: true,
+		error: null,
+	})
 
 	useEffect(() => {
 		if (!("geolocation" in navigator)) {
-			setState({ city: null, loading: false, error: "Geolocalizzazione non supportata dal browser." })
+			setState((s) => ({ ...s, loading: false, error: "Geolocalizzazione non supportata dal browser." }))
 			return
 		}
 
 		navigator.geolocation.getCurrentPosition(
 			async (pos) => {
+				const { latitude, longitude } = pos.coords
 				try {
-					const { latitude, longitude } = pos.coords
 					const res = await fetch(
 						"https://nominatim.openstreetmap.org/reverse?format=json&lat=" +
 							latitude +
@@ -29,27 +37,23 @@ export function useGeolocation() {
 							"&zoom=10&addressdetails=1",
 						{ headers: { "User-Agent": "Encore/1.0 ( m.demiri@hotmail.it )" } },
 					)
-					if (!res.ok) {
-						setState({ city: null, loading: false, error: null })
-						return
+					if (res.ok) {
+						const data = await res.json()
+						const addr = data.address ?? {}
+						const rawCity = addr.city || addr.town || addr.municipality || addr.village || null
+						const city = rawCity
+							? rawCity.charAt(0).toUpperCase() + rawCity.slice(1).toLowerCase()
+							: null
+						setState({ city, lat: latitude, lng: longitude, loading: false, error: null })
+					} else {
+						setState({ city: null, lat: latitude, lng: longitude, loading: false, error: null })
 					}
-					const data = await res.json()
-					const addr = data.address ?? {}
-					const city =
-						addr.city || addr.town || addr.municipality || addr.village || null
-					if (!city) {
-						setState({ city: null, loading: false, error: null })
-						return
-					}
-					// Capitalize
-					const name = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase()
-					setState({ city: name, loading: false, error: null })
 				} catch {
-					setState({ city: null, loading: false, error: null })
+					setState({ city: null, lat: latitude, lng: longitude, loading: false, error: null })
 				}
 			},
 			() => {
-				setState({ city: null, loading: false, error: "Permesso geolocalizzazione negato." })
+				setState((s) => ({ ...s, loading: false, error: "Permesso geolocalizzazione negato." }))
 			},
 		)
 	}, [])
