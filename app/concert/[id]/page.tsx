@@ -23,11 +23,24 @@ const fmt = (d: string | null) =>
 async function getConcert(id: string) {
 	const admin = getAdmin()
 	if (!admin) return null
-	const { data } = await admin
+
+	// Prima cerca per UUID del DB
+	let { data } = await admin
 		.from("concerts")
 		.select("date, artists(name), venues(name, city, country)")
 		.eq("id", id)
 		.maybeSingle()
+
+	if (!data) {
+		// Fallback: cerca per setlistfm_id (usato da Ticketmaster e Setlist.fm)
+		const result = await admin
+			.from("concerts")
+			.select("date, artists(name), venues(name, city, country)")
+			.eq("setlistfm_id", id)
+			.maybeSingle()
+		data = result.data
+	}
+
 	return (data as unknown as ConcertMeta) ?? null
 }
 

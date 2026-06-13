@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { Calendar, MapPin, Users } from "lucide-react"
+import { Calendar, MapPin } from "lucide-react"
 
 type ConcertMarker = {
 	id: string
@@ -44,17 +44,17 @@ function FitBounds({ markers, userLat, userLng }: {
 }) {
 	const map = useMap()
 	useEffect(() => {
-		if (markers.length === 0) return
 		const allPoints: [number, number][] = [
 			...markers,
 			...(userLat && userLng ? [[userLat, userLng] as [number, number]] : []),
 		]
+		if (allPoints.length === 0) return
 		if (allPoints.length === 1) {
-			map.setView(allPoints[0], 13, { animate: true })
+			map.setView(allPoints[0], 12, { animate: true })
 			return
 		}
 		const bounds = L.latLngBounds(allPoints)
-		map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14, animate: true })
+		map.fitBounds(bounds, { padding: [30, 30], maxZoom: 13, animate: true })
 	}, [markers, userLat, userLng, map])
 	return null
 }
@@ -69,16 +69,30 @@ export function ConcertMap({
 	userLat: number | null
 	userLng: number | null
 }) {
-	const defaultCenter: [number, number] = userLat && userLng ? [userLat, userLng] : [41.9028, 12.4964]
+	// Se non ci sono marker ma abbiamo la posizione utente, centra lì con zoom 12
+	const defaultCenter: [number, number] =
+		userLat && userLng ? [userLat, userLng] : [41.9028, 12.4964]
+	const defaultZoom = markers.length > 0 ? 10 : (userLat && userLng ? 12 : 6)
+
 	const positions = useMemo(() => markers.map((m) => [m.lat, m.lng] as [number, number]), [markers])
 
 	return (
 		<div className="h-[380px] w-full overflow-hidden border border-white/10">
-			<MapContainer center={defaultCenter} zoom={13} className="h-full w-full" scrollWheelZoom={false} zoomControl={true}>
-				<TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-					url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+			<MapContainer
+				center={defaultCenter}
+				zoom={defaultZoom}
+				className="h-full w-full"
+				scrollWheelZoom={false}
+				zoomControl={true}
+			>
+				<TileLayer
+					attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+					url="{{https://tile.openstreetmap.org/{z}}}/{x}/{y}.png"
 				/>
-				<FitBounds markers={positions} userLat={userLat} userLng={userLng} />
+				{/* Se non ci sono marker, punta comunque sulla posizione utente */}
+				{userLat && userLng && (
+					<FitBounds markers={positions} userLat={userLat} userLng={userLng} />
+				)}
 				{markers.map((m) => (
 					<Marker key={m.id} position={[m.lat, m.lng]} icon={createArtistIcon(m.artistImage, m.name)}>
 						<Popup>
@@ -104,6 +118,22 @@ export function ConcertMap({
 						</Popup>
 					</Marker>
 				))}
+				{/* Marker della posizione utente */}
+				{userLat && userLng && markers.length === 0 && (
+					<Marker
+						position={[userLat, userLng]}
+						icon={L.divIcon({
+							html: `<div style="width:14px;height:14px;border-radius:50%;background:#FF2D6B;border:3px solid #fff;box-shadow:0 0 10px rgba(255,45,107,0.5);"></div>`,
+							className: "",
+							iconSize: [14, 14],
+							iconAnchor: [7, 7],
+						})}
+					>
+						<Popup>
+							<div className="text-sm font-semibold">Sei qui</div>
+						</Popup>
+					</Marker>
+				)}
 			</MapContainer>
 		</div>
 	)
