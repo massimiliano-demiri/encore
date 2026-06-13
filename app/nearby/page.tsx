@@ -6,14 +6,14 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { useGeolocation } from "@/lib/use-geolocation"
-import { MapPin, Users, ChevronRight, Navigation, Calendar, Loader2 } from "lucide-react"
+import { MapPin, Users, Navigation, Calendar, Loader2 } from "lucide-react"
 
 const ConcertMap = dynamic(
 	() => import("@/components/concert-map").then((m) => ({ default: m.ConcertMap })),
 	{
 		ssr: false,
 		loading: () => (
-			<div className="h-[420px] w-full flex items-center justify-center bg-[#17171F] border border-white/10">
+			<div className="h-[380px] w-full flex items-center justify-center bg-[#17171F] border border-white/10">
 				<Loader2 className="h-6 w-6 animate-spin text-white/30" />
 			</div>
 		),
@@ -44,6 +44,7 @@ type NearbyConcert = {
 	distanceKm: number | null
 	artistImage: string | null
 	source: "setlistfm" | "db" | "ticketmaster"
+	ticketUrl: string | null
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -84,34 +85,30 @@ export default function NearbyPage() {
 	const [pastConcerts, setPastConcerts] = useState<NearbyConcert[]>([])
 	const [loading, setLoading] = useState(true)
 	const [imagesLoaded, setImagesLoaded] = useState(false)
-
 	const [profileCity, setProfileCity] = useState<string | null>(null)
 
-// Se l'utente è loggato, fetcha la città dal profilo (fallback se GPS negato)
-useEffect(() => {
-	if (!supabase || !user) return
-	supabase
-		.from("profiles")
-		.select("city")
-		.eq("id", user.id)
-		.maybeSingle()
-		.then(({ data }) => {
-			setProfileCity((data as unknown as { city: string | null })?.city ?? null)
-		})
-}, [supabase, user])
+	useEffect(() => {
+		if (!supabase || !user) return
+		supabase
+			.from("profiles")
+			.select("city")
+			.eq("id", user.id)
+			.maybeSingle()
+			.then(({ data }) => {
+				setProfileCity((data as unknown as { city: string | null })?.city ?? null)
+			})
+	}, [supabase, user])
 
-const userCity = geo.city || profileCity
-const userLat = geo.lat ?? null
-const userLng = geo.lng ?? null
+	const userCity = geo.city || profileCity
+	const userLat = geo.lat ?? null
+	const userLng = geo.lng ?? null
 
-	// Fetch concerti: Ticketmaster (futuri) + Setlist.fm + DB locale
 	useEffect(() => {
 		const load = async () => {
 			if (!supabase) { setLoading(false); return }
 
 			const today = new Date().toISOString().slice(0, 10)
 
-			// Parametri per le tre fonti
 			const sfParams = new URLSearchParams()
 			if (geo.city) sfParams.set("city", geo.city)
 
@@ -138,7 +135,6 @@ const userLng = geo.lng ?? null
 
 			const { data: dbConcerts } = dbResult
 
-			// 1) Ticketmaster (fonte primaria per futuri)
 			const tmItems: NearbyConcert[] = ((tmRes.events ?? []) as any[]).map((c: any) => ({
 				id: c.id,
 				date: c.date,
@@ -152,9 +148,9 @@ const userLng = geo.lng ?? null
 				distanceKm: null,
 				artistImage: c.imageUrl ?? null,
 				source: "ticketmaster" as const,
+				ticketUrl: c.ticketUrl ?? null,
 			}))
 
-			// 2) Setlist.fm
 			const sfItems: NearbyConcert[] = ((sfRes.concerts ?? []) as any[]).map((c: any) => ({
 				id: c.id,
 				date: c.date,
@@ -168,9 +164,9 @@ const userLng = geo.lng ?? null
 				distanceKm: null,
 				artistImage: null,
 				source: "setlistfm" as const,
+				ticketUrl: null,
 			}))
 
-			// 3) DB locali
 			const dbItems: NearbyConcert[] = ((dbConcerts ?? []) as unknown as Array<{
 				id: string
 				date: string | null
@@ -189,9 +185,9 @@ const userLng = geo.lng ?? null
 				distanceKm: null,
 				artistImage: null,
 				source: "db" as const,
+				ticketUrl: null,
 			}))
 
-			// Unisci: Ticketmaster prima (priorità), poi Setlist.fm, poi DB
 			const seen = new Set<string>()
 			const merged: NearbyConcert[] = []
 			for (const c of [...tmItems, ...sfItems, ...dbItems]) {
@@ -204,7 +200,6 @@ const userLng = geo.lng ?? null
 				merged.push(c)
 			}
 
-			// Filtro 100km
 			const inRadius = (list: NearbyConcert[]) => {
 				if (userLat == null || userLng == null) return list
 				return list.filter((c) => {
@@ -231,7 +226,6 @@ const userLng = geo.lng ?? null
 		if (!geo.loading) load()
 	}, [supabase, geo.city, geo.loading, userLat, userLng])
 
-	// Fetch profili + raggruppa per città
 	useEffect(() => {
 		if (!supabase || geo.loading) return
 		(async () => {
@@ -288,7 +282,6 @@ const userLng = geo.lng ?? null
 		})()
 	}, [supabase, geo.city, geo.loading])
 
-	// Fetch immagini artista (solo per Setlist.fm e DB, Ticketmaster ha già le sue)
 	useEffect(() => {
 		const items = [...nearbyConcerts, ...pastConcerts].filter(
 			(c) => c.source !== "ticketmaster" && c.artistImage == null,
@@ -317,7 +310,6 @@ const userLng = geo.lng ?? null
 		})()
 	}, [nearbyConcerts.length > 0 && !imagesLoaded])
 
-	// Marker per la mappa
 	const allMapMarkers = useMemo(
 		() =>
 			[...nearbyConcerts, ...pastConcerts]
@@ -332,13 +324,14 @@ const userLng = geo.lng ?? null
 					city: c.city,
 					rsvpCount: 0,
 					artistImage: c.artistImage,
+					ticketUrl: c.ticketUrl,
 				})),
 		[nearbyConcerts, pastConcerts],
 	)
 
 	if (loading || geo.loading) return <main className="mx-auto max-w-2xl p-6">Carico…</main>
 
-		return (
+	return (
 		<main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
 			<div className="mb-6 flex items-center gap-3">
 				<div className="h-px w-6 bg-white/10" />
@@ -382,132 +375,131 @@ const userLng = geo.lng ?? null
 							Prossimi {userCity ? "nei dintorni di " + userCity : "in Italia"}
 						</h2>
 					</div>
-					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+					<div className="flex flex-col gap-2">
 						{nearbyConcerts.map((c) => (
-							<Link
+							<div
 								key={c.id}
-								href={"/concert/" + c.id}
-								className="group flex items-center gap-4 border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.04]"
+								className="flex items-center gap-3 border-l-2 border-[#FFC24B]/20 bg-white/[0.02] py-3 pl-4 transition hover:border-[#FFC24B]/50 hover:bg-white/[0.04]"
 							>
 								{c.artistImage && c.source === "ticketmaster" ? (
-									<img src={c.artistImage} alt={c.artistName} className="h-12 w-12 shrink-0 rounded object-cover" />
+									<img src={c.artistImage} alt={c.artistName} className="h-10 w-10 shrink-0 rounded object-cover" />
 								) : (
-									<div className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#17171F] text-white/30">
-										<Calendar className="h-5 w-5" />
+									<div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[#17171F] text-white/30">
+										<Calendar className="h-4 w-4" />
 									</div>
 								)}
 								<div className="min-w-0 flex-1">
-									<p className="font-semibold text-white group-hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
-										{c.artistName}
-									</p>
-									<p className="text-sm text-white/50">
-										{c.venueName}
-										{c.city ? ", " + c.city : ""}
-									</p>
-									<div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-										<span className="text-white/40">{fmtDate(c.date)}</span>
+									<Link href={"/concert/" + c.id} className="block">
+										<p className="text-sm font-semibold text-white hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
+											{c.artistName}
+										</p>
+									</Link>
+									<div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+										<span className="text-white/50">
+											{c.venueName}{c.city ? ", " + c.city : ""}
+										</span>
+										<span className="text-white/35">{fmtDate(c.date)}</span>
 										{c.distanceKm != null && (
-											<span className="text-white/30">{Math.round(c.distanceKm)} km</span>
+											<span className="text-white/25">{Math.round(c.distanceKm)} km</span>
 										)}
 										{c.source === "ticketmaster" && (
 											<span className="rounded-full bg-[#FF2D6B]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#FF2D6B]">
 												Ticketmaster
 											</span>
 										)}
+										{c.ticketUrl && c.source === "ticketmaster" && (
+											<a
+												href={c.ticketUrl}
+												target="_blank"
+												rel="noopener"
+												className="rounded-full bg-[#7A5CFF]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#7A5CFF] hover:bg-[#7A5CFF]/25 transition"
+											>
+												Biglietti ↗
+											</a>
+										)}
 									</div>
 								</div>
-							</Link>
+							</div>
 						))}
 					</div>
 				</section>
 			)}
 
-			{/* PASSATI */}
+			{/* PASSATI (compatti) */}
 			{pastConcerts.length > 0 && (
 				<section className="mb-10">
-					<div className="mb-4 flex items-center gap-2">
+					<div className="mb-3 flex items-center gap-2">
 						<Calendar className="h-4 w-4 text-white/20" />
-						<h2 className="text-lg font-bold text-white/50 [font-family:var(--font-display)]">Già passati</h2>
+						<h2 className="text-sm font-bold text-white/40 [font-family:var(--font-display)]">
+							Già passati
+						</h2>
 						<span className="text-xs text-white/20">{pastConcerts.length}</span>
 					</div>
-					<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 opacity-50">
-						{pastConcerts.slice(0, 9).map((c) => (
+					<div className="flex flex-wrap gap-1.5 opacity-50">
+						{pastConcerts.slice(0, 6).map((c) => (
 							<Link
 								key={c.id}
 								href={"/concert/" + c.id}
-								className="group flex items-center gap-2 border border-white/5 bg-white/[0.01] p-2.5 transition hover:border-white/15"
+								className="inline-flex items-center gap-1.5 border border-white/5 bg-white/[0.01] px-2.5 py-1 text-xs transition hover:border-white/15"
 							>
-								<div className="min-w-0 flex-1">
-									<p className="truncate text-xs font-semibold text-white/60 [font-family:var(--font-display)]">
-										{c.artistName}
-									</p>
-									<p className="truncate text-[10px] text-white/30">
-										{c.venueName}
-										{c.city ? ", " + c.city : ""}
-										{c.distanceKm != null ? " · " + Math.round(c.distanceKm) + "km" : ""}
-									</p>
-								</div>
+								<span className="font-semibold text-white/50 [font-family:var(--font-display)]">
+									{c.artistName}
+								</span>
+								<span className="text-white/25">
+									{c.venueName}{c.city ? ", " + c.city : ""}
+									{c.distanceKm != null ? " · " + Math.round(c.distanceKm) + "km" : ""}
+								</span>
 							</Link>
 						))}
 					</div>
 				</section>
 			)}
 
-			{/* PERSONE PER CITTÀ */}
-			{[...groups.entries()].length === 0 ? (
-				<div className="border border-white/10 bg-white/[0.02] p-10 text-center">
-					<Users className="mx-auto mb-3 h-8 w-8 text-white/20" />
-					<p className="text-white/40">Nessun profilo ancora. Logga un concerto per comparire qui.</p>
-				</div>
-			) : (
-				<div className="flex flex-col gap-10">
-					{[...groups.entries()].map(([city, profiles]) => (
-						<section key={city}>
-							<div className="mb-3 flex items-center gap-2">
-								<MapPin className="h-4 w-4 text-[#FF2D6B]" />
-								<h2 className="text-lg font-bold text-white [font-family:var(--font-display)]">
-									{city}
+			{/* PERSONE PER CITTÀ (collassabile) */}
+			{groups.size > 0 && (
+				<details className="group border border-white/10 bg-white/[0.02]">
+					<summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-white/40 hover:text-white/70 transition flex items-center gap-2">
+						<Users className="h-4 w-4" />{" "}
+						{[...groups.values()].reduce((s, p) => s + p.length, 0)} appassionati nella tua zona
+					</summary>
+					<div className="px-5 pb-4 flex flex-col gap-6">
+						{[...groups.entries()].slice(0, 3).map(([city, profiles]) => (
+							<div key={city}>
+								<div className="mb-2 flex items-center gap-2">
+									<MapPin className="h-3.5 w-3.5 text-[#FF2D6B]" />
+									<span className="text-sm font-semibold text-white/70">{city}</span>
+									<span className="text-xs text-white/30">{profiles.length}</span>
 									{userCity && userCity.toLowerCase() === city.toLowerCase() && (
-										<span className="ml-2 text-xs font-normal text-[#FF2D6B] uppercase tracking-wider">
+										<span className="text-[10px] font-normal text-[#FF2D6B] uppercase tracking-wider">
 											La tua zona
 										</span>
 									)}
-								</h2>
-								<span className="text-xs text-white/30">{profiles.length}</span>
+								</div>
+								<div className="flex flex-wrap gap-1.5">
+									{profiles.slice(0, 10).map((card) => {
+										const initials = card.displayName.trim().slice(0, 2).toUpperCase()
+										return (
+											<Link
+												key={card.userId}
+												href={"/u/" + card.username}
+												className="flex items-center gap-1.5 border border-white/10 bg-white/[0.02] py-1 pl-1 pr-2.5 transition hover:border-white/25"
+											>
+												{card.avatarUrl ? (
+													<img src={card.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+												) : (
+													<div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-[10px] font-bold text-white">
+														{initials}
+													</div>
+												)}
+												<span className="text-xs text-white/60">{card.displayName}</span>
+											</Link>
+										)
+									})}
+								</div>
 							</div>
-							<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-								{profiles.map((card) => {
-									const initials = card.displayName.trim().slice(0, 2).toUpperCase()
-									return (
-										<Link
-											key={card.userId}
-											href={"/u/" + card.username}
-											className="group flex items-center gap-4 border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.04]"
-										>
-											{card.avatarUrl ? (
-												<img src={card.avatarUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
-											) : (
-												<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-sm font-bold text-white">
-													{initials}
-												</div>
-											)}
-											<div className="min-w-0 flex-1">
-												<span className="font-semibold text-white group-hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
-													{card.displayName}
-												</span>
-												<p className="text-xs text-white/40">@{card.username}</p>
-												<div className="mt-1 text-xs text-white/30">
-													{card.concertCount} {card.concertCount === 1 ? "concerto" : "concerti"}
-												</div>
-											</div>
-											<ChevronRight className="h-4 w-4 shrink-0 text-white/20 group-hover:text-white/50 transition-colors" />
-										</Link>
-									)
-								})}
-							</div>
-						</section>
-					))}
-				</div>
+						))}
+					</div>
+				</details>
 			)}
 		</main>
 	)

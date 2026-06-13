@@ -15,42 +15,26 @@ export async function GET(request: Request) {
 	}
 
 	let url: string
-
 	if (keyword) {
-		// Ricerca per nome artista
-		url =
-			"https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
-			TICKETMASTER_KEY +
-			"&keyword=" +
-			encodeURIComponent(keyword) +
+		url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
+			TICKETMASTER_KEY + "&keyword=" + encodeURIComponent(keyword) +
 			"&classificationName=music&size=15&sort=date,asc"
 	} else if (lat && lng) {
-		// Ricerca per posizione
-		url =
-			"https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
-			TICKETMASTER_KEY +
-			"&latlong=" + lat + "," + lng +
-			"&radius=" + radius +
-			"&unit=" + unit +
+		url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
+			TICKETMASTER_KEY + "&latlong=" + lat + "," + lng +
+			"&radius=" + radius + "&unit=" + unit +
 			"&classificationName=music&size=40&sort=date,asc"
 	} else {
-		// Fallback: Italia
-		url =
-			"https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
-			TICKETMASTER_KEY +
-			"&countryCode=IT&classificationName=music&size=30&sort=date,asc"
+		url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" +
+			TICKETMASTER_KEY + "&countryCode=IT&classificationName=music&size=30&sort=date,asc"
 	}
 
 	try {
 		const res = await fetch(url)
-		if (!res.ok) {
-			console.error("Ticketmaster error:", res.status, res.statusText)
-			return NextResponse.json({ events: [] })
-		}
+		if (!res.ok) return NextResponse.json({ events: [] })
 		const data = await res.json()
 		return NextResponse.json({ events: formatEvents(data) })
-	} catch (err) {
-		console.error("Ticketmaster fetch error:", err)
+	} catch {
 		return NextResponse.json({ events: [] })
 	}
 }
@@ -76,6 +60,7 @@ function formatEvents(data: any) {
 			lat: venue.location?.latitude ? parseFloat(venue.location.latitude) : null,
 			lng: venue.location?.longitude ? parseFloat(venue.location.longitude) : null,
 			imageUrl: e.images?.[0]?.url ?? null,
+			ticketUrl: e.url ?? null,
 		}
 	})
 }
