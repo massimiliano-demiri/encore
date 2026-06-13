@@ -97,6 +97,18 @@ export default function Home() {
 
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+			{/* Pitch per nuovi visitatori — solo se non loggato */}
+			{!user && (
+				<div className="mb-10">
+					<p className="text-2xl font-bold leading-snug sm:text-3xl [font-family:var(--font-display)]">
+						Il diario dei tuoi concerti.
+					</p>
+					<p className="mt-1.5 max-w-lg text-base text-white/45 sm:text-lg">
+						Vota, recensisci e scopri chi c&apos;era con te. Ogni live, per sempre.
+					</p>
+				</div>
+			)}
+
 			{/* ───── CONCERTI POPOLARI (griglia poster) ───── */}
 			{popular.length > 0 && (
 				<section className="mb-14">
@@ -143,7 +155,6 @@ export default function Home() {
 								Tieni il diario dei tuoi concerti, leggi le recensioni di chi c&apos;era con te e scopri nuovi live.
 							</p>
 
-							{/* Avatar dei profili seed */}
 							{seedAvatars.length > 0 && (
 								<div className="mt-4 flex items-center gap-1">
 									{seedAvatars.slice(0, 8).map((s, i) => {
@@ -170,10 +181,9 @@ export default function Home() {
 								</div>
 							)}
 						</div>
-
 						<div className="shrink-0 flex flex-col gap-2">
 							<Link
-								href="/login"
+								href="/signup"
 								className="inline-flex w-fit items-center gap-2 bg-[#FF2D6B] px-8 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition hover:brightness-110"
 							>
 								Crea il tuo diario <ArrowRight className="h-4 w-4" />
@@ -206,7 +216,6 @@ export default function Home() {
 								href={"/concert/" + it.concert_id}
 								className="group flex items-start gap-4 border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.04]"
 							>
-								{/* Foto artista vera */}
 								<div className="h-16 w-12 shrink-0 overflow-hidden">
 									<ArtistImage
 										name={it.concerts?.artists?.name ?? ""}
@@ -214,7 +223,6 @@ export default function Home() {
 										className="h-full w-full"
 									/>
 								</div>
-
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2">
 										{it.profiles?.avatar_url && (
@@ -278,7 +286,7 @@ export default function Home() {
 				</section>
 			)}
 
-			{/* ───── STATS + CTA (solo per loggati, i non loggati hanno già la sezione sopra) ───── */}
+			{/* ───── STATS + CTA (solo per loggati) ───── */}
 			{user && (
 				<section className="border-t border-white/10 pt-10">
 					<div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
