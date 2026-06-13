@@ -124,21 +124,27 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 										>
 											<div className="flex items-center justify-between">
 												<div>
-													<div className="font-semibold text-white [font-family:var(--font-display)]">{c.venue}</div>
-													<div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/45">
-														<span className="inline-flex items-center gap-1.5">
-															<MapPin className="h-3.5 w-3.5" /> {c.city}
-															{c.country ? ", " + c.country : ""}
-														</span>
-														<span className="inline-flex items-center gap-1.5">
-															<Calendar className="h-3.5 w-3.5" /> {fmtDate(c.date)}
-														</span>
-														{c.source === "ticketmaster" && (
-															<span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#FFC24B] uppercase">
-																<Ticket className="h-3 w-3" /> Ticketmaster
+													<Link href={"/concert/" + c.id} className="block">
+														<div className="font-semibold text-white hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
+															{c.venue}
+														</div>
+													</Link>
+													<Link href={"/concert/" + c.id} className="block">
+														<div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/45">
+															<span className="inline-flex items-center gap-1.5">
+																<MapPin className="h-3.5 w-3.5" /> {c.city}
+																{c.country ? ", " + c.country : ""}
 															</span>
-														)}
-													</div>
+															<span className="inline-flex items-center gap-1.5">
+																<Calendar className="h-3.5 w-3.5" /> {fmtDate(c.date)}
+															</span>
+															{c.source === "ticketmaster" && (
+																<span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#FFC24B] uppercase">
+																	<Ticket className="h-3 w-3" /> Ticketmaster
+																</span>
+															)}
+														</div>
+													</Link>
 												</div>
 												<div className="shrink-0">
 													<RsvpButton concertId={c.id} concertDate={c.date} />

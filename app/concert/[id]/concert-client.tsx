@@ -51,23 +51,39 @@ export function ConcertClient({ id }: { id: string }) {
 	useEffect(() => {
 		const load = async () => {
 			if (!supabase) return
-			const { data: c } = await supabase
+
+			// 1) Cerca il concerto: prima per UUID, poi per setlistfm_id (Ticketmaster)
+			let { data: c } = await supabase
 				.from("concerts")
 				.select("id, date, artists(name, mbid), venues(name, city)")
 				.eq("id", id)
 				.maybeSingle()
-			setConcert((c as unknown as Concert) ?? null)
+
+			if (!c) {
+				const fallback = await supabase
+					.from("concerts")
+					.select("id, date, artists(name, mbid), venues(name, city)")
+					.eq("setlistfm_id", id)
+					.maybeSingle()
+				c = fallback.data
+			}
+
+			const concertData = (c as unknown as Concert) ?? null
+			setConcert(concertData)
+
+			// Usa l'UUID trovato (o l'id originale) per le query successive
+			const concertUuid = concertData?.id ?? id
 
 			const [{ data: r }, { data: a }] = await Promise.all([
 				supabase
 					.from("logs")
 					.select("id, rating, review, logged_at, profiles(username, display_name)")
-					.eq("concert_id", id)
+					.eq("concert_id", concertUuid)
 					.order("logged_at", { ascending: false }),
 				supabase
 					.from("logs")
 					.select("profiles(username, display_name, avatar_url)")
-					.eq("concert_id", id),
+					.eq("concert_id", concertUuid),
 			])
 			setReviews((r as unknown as Review[]) ?? [])
 			setAttendees((a as unknown as Attendee[]) ?? [])
@@ -107,10 +123,10 @@ export function ConcertClient({ id }: { id: string }) {
 			? (rated.reduce((s, x) => s + (x.rating ?? 0), 0) / rated.length).toFixed(1)
 			: null
 	const artist = concert.artists?.name ?? "Artista"
+	const isFuture = concert.date ? new Date(concert.date) > new Date() : false
 
 	return (
 		<main className="pb-10">
-			{/* Hero */}
 			<div className="relative h-72 w-full overflow-hidden">
 				<ArtistImage name={artist} mbid={concert.artists?.mbid ?? undefined} className="absolute inset-0 h-full w-full" />
 				<div className="absolute inset-0 bg-gradient-to-t from-[#0E0E12] via-[#0E0E12]/60 to-transparent" />
@@ -126,7 +142,6 @@ export function ConcertClient({ id }: { id: string }) {
 			</div>
 
 			<div className="mx-auto flex max-w-2xl flex-col gap-8 p-6">
-				{/* Medaglione voto + RSVP */}
 				<div className="flex flex-wrap items-center gap-4 border-l-2 border-[#FF2D6B]/40 bg-white/[0.02] py-4 pl-5">
 					{avg ? (
 						<>
@@ -141,10 +156,9 @@ export function ConcertClient({ id }: { id: string }) {
 					) : (
 						<span className="text-sm text-white/50">Ancora nessun voto</span>
 					)}
-					<RsvpButton concertId={concert.id} concertDate={concert.date} />
+					{isFuture && <RsvpButton concertId={concert.id} concertDate={concert.date} />}
 				</div>
 
-				{/* Chi altro c'era */}
 				{uniqueAttendees.length > 0 && (
 					<div>
 						<div className="mb-4 flex items-center gap-3">
@@ -165,11 +179,7 @@ export function ConcertClient({ id }: { id: string }) {
 										className="flex items-center gap-2 border border-white/10 bg-white/[0.02] py-1.5 pl-1.5 pr-4 transition hover:border-[#FF2D6B]/40 hover:bg-white/[0.05]"
 									>
 										{a.profiles?.avatar_url ? (
-											<img
-												src={a.profiles.avatar_url}
-												alt={name}
-												className="h-7 w-7 rounded-full object-cover"
-											/>
+											<img src={a.profiles.avatar_url} alt={name} className="h-7 w-7 rounded-full object-cover" />
 										) : (
 											<div className="flex h-7 w-7 items-center justify-center bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-xs font-bold text-white">
 												{initials}
@@ -183,23 +193,19 @@ export function ConcertClient({ id }: { id: string }) {
 					</div>
 				)}
 
-				<LogConcert concertId={concert.id} />
+				<LogConcert concertId={concert.id} concertDate={concert.date} />
 				<AddToList concertId={concert.id} />
 
-				{/* Scaletta */}
 				<div>
 					<div className="mb-4 flex items-center gap-3">
 						<div className="h-px w-6 bg-white/10" />
-						<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">
-							Scaletta
-						</span>
+						<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">Scaletta</span>
 					</div>
 					<Setlist mbid={concert.artists?.mbid ?? null} date={concert.date} />
 				</div>
 
 				<ConcertPhotos concertId={concert.id} />
 
-				{/* Recensioni */}
 				<div>
 					<div className="mb-4 flex items-center gap-3">
 						<div className="h-px w-6 bg-white/10" />
@@ -222,10 +228,7 @@ export function ConcertClient({ id }: { id: string }) {
 										<div className="flex flex-col">
 											<span className="text-sm font-semibold text-white">
 												{x.profiles?.username ? (
-													<Link
-														href={"/u/" + x.profiles.username}
-														className="hover:text-[#FFC24B] transition-colors"
-													>
+													<Link href={"/u/" + x.profiles.username} className="hover:text-[#FFC24B] transition-colors">
 														{x.profiles.display_name || x.profiles.username}
 													</Link>
 												) : (
@@ -240,11 +243,7 @@ export function ConcertClient({ id }: { id: string }) {
 											</span>
 										)}
 									</div>
-									{x.review && (
-										<p className="mt-2 text-sm leading-relaxed text-white/70">
-											{x.review}
-										</p>
-									)}
+									{x.review && <p className="mt-2 text-sm leading-relaxed text-white/70">{x.review}</p>}
 									<div className="mt-3 flex flex-wrap items-center gap-4 border-t border-white/5 pt-3">
 										<ReviewLikes logId={x.id} />
 										<ReviewComments logId={x.id} />
