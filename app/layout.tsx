@@ -26,8 +26,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="it" className={`dark ${inter.variable} ${spaceGrotesk.variable}`}>
-			<body className="min-h-screen bg-[#0E0E12] text-[#F4F4F6] antialiased [font-family:var(--font-inter)]">
+		<html
+			lang="it"
+			className={`dark ${inter.variable} ${spaceGrotesk.variable}`}
+		>
+			<body className="min-h-screen bg-[#0E0E12] text-[#F4F4F6] antialiased [font-family:var(--font-inter)] safe-top">
 				<NavBar />
 				<main className="pb-20 sm:pb-0">{children}</main>
 				<Footer />
