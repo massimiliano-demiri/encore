@@ -21,20 +21,20 @@ type ConcertMarker = {
 
 function createArtistIcon(imageUrl: string | null, name: string): L.DivIcon {
 	const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
-	const size = 44
-	const innerSize = 34
+	const size = 42
+	const innerSize = 32
 	const html = imageUrl
 		? `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;position:relative;">
-				<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#FF2D6B,#7A5CFF);opacity:0.7;transform:scale(1.15);"></div>
+				<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#FF2D6B,#7A5CFF);opacity:0.7;transform:scale(1.12);"></div>
 				<img src="${imageUrl}" style="width:${innerSize}px;height:${innerSize}px;border-radius:50%;object-fit:cover;position:relative;z-index:1;border:2px solid #0E0E12;" alt="${name}" />
-				<div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:10px;height:10px;background:#FF2D6B;border-radius:50%;border:2px solid #0E0E12;"></div>
+				<div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:8px;height:8px;background:#FF2D6B;border-radius:50%;border:2px solid #0E0E12;"></div>
 			</div>`
 		: `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;position:relative;">
-				<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#FF2D6B,#7A5CFF);opacity:0.7;transform:scale(1.15);"></div>
-				<div style="width:${innerSize}px;height:${innerSize}px;border-radius:50%;background:linear-gradient(135deg,rgba(255,45,107,0.6),rgba(122,92,255,0.6));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:white;position:relative;z-index:1;border:2px solid #0E0E12;font-family:system-ui,sans-serif;">${initials}</div>
-				<div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:10px;height:10px;background:#FF2D6B;border-radius:50%;border:2px solid #0E0E12;"></div>
+				<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#FF2D6B,#7A5CFF);opacity:0.7;transform:scale(1.12);"></div>
+				<div style="width:${innerSize}px;height:${innerSize}px;border-radius:50%;background:linear-gradient(135deg,rgba(255,45,107,0.6),rgba(122,92,255,0.6));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;position:relative;z-index:1;border:2px solid #0E0E12;font-family:system-ui,sans-serif;">${initials}</div>
+				<div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:8px;height:8px;background:#FF2D6B;border-radius:50%;border:2px solid #0E0E12;"></div>
 			</div>`
-	return L.divIcon({ html, className: "", iconSize: [size + 4, size + 12], iconAnchor: [(size + 4) / 2, size + 12], popupAnchor: [0, -(size + 14)] })
+	return L.divIcon({ html, className: "", iconSize: [size + 4, size + 10], iconAnchor: [(size + 4) / 2, size + 10], popupAnchor: [0, -(size + 12)] })
 }
 
 function FitBounds({ markers, userLat, userLng }: {
@@ -44,17 +44,21 @@ function FitBounds({ markers, userLat, userLng }: {
 }) {
 	const map = useMap()
 	useEffect(() => {
+		if (markers.length === 0 && userLat && userLng) {
+			map.setView([userLat, userLng], 13, { animate: true })
+			return
+		}
 		const allPoints: [number, number][] = [
 			...markers,
 			...(userLat && userLng ? [[userLat, userLng] as [number, number]] : []),
 		]
 		if (allPoints.length === 0) return
 		if (allPoints.length === 1) {
-			map.setView(allPoints[0], 12, { animate: true })
+			map.setView(allPoints[0], 13, { animate: true })
 			return
 		}
 		const bounds = L.latLngBounds(allPoints)
-		map.fitBounds(bounds, { padding: [30, 30], maxZoom: 13, animate: true })
+		map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13, animate: true })
 	}, [markers, userLat, userLng, map])
 	return null
 }
@@ -69,39 +73,33 @@ export function ConcertMap({
 	userLat: number | null
 	userLng: number | null
 }) {
-	// Se non ci sono marker ma abbiamo la posizione utente, centra lì con zoom 12
-	const defaultCenter: [number, number] =
-		userLat && userLng ? [userLat, userLng] : [41.9028, 12.4964]
-	const defaultZoom = markers.length > 0 ? 10 : (userLat && userLng ? 12 : 6)
-
+	const defaultCenter: [number, number] = userLat && userLng ? [userLat, userLng] : [41.9028, 12.4964]
+	const defaultZoom = markers.length > 0 ? 10 : (userLat && userLng ? 13 : 6)
 	const positions = useMemo(() => markers.map((m) => [m.lat, m.lng] as [number, number]), [markers])
 
 	return (
-		<div className="h-[380px] w-full overflow-hidden border border-white/10">
+		<div className="h-[400px] w-full overflow-hidden border border-white/10 dark-map">
 			<MapContainer
 				center={defaultCenter}
 				zoom={defaultZoom}
 				className="h-full w-full"
 				scrollWheelZoom={false}
-				zoomControl={true}
+				zoomControl={false}
 			>
 				<TileLayer
-					attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-					url="{{https://tile.openstreetmap.org/{z}}}/{x}/{y}.png"
+					attribution=""
+					url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 				/>
-				{/* Se non ci sono marker, punta comunque sulla posizione utente */}
-				{userLat && userLng && (
-					<FitBounds markers={positions} userLat={userLat} userLng={userLng} />
-				)}
+				<FitBounds markers={positions} userLat={userLat} userLng={userLng} />
 				{markers.map((m) => (
 					<Marker key={m.id} position={[m.lat, m.lng]} icon={createArtistIcon(m.artistImage, m.name)}>
 						<Popup>
 							<div className="min-w-[160px] text-sm">
-								<p className="font-bold mb-1 text-sm [font-family:var(--font-display)]">{m.name}</p>
-								<p className="text-xs text-gray-600 flex items-center gap-1">
+								<p className="font-bold mb-1 text-sm">{m.name}</p>
+								<p className="text-xs flex items-center gap-1 opacity-70">
 									<MapPin className="h-3 w-3" /> {m.venue}, {m.city}
 								</p>
-								<p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+								<p className="text-xs flex items-center gap-1 mt-0.5 opacity-70">
 									<Calendar className="h-3 w-3" /> {fmtDate(m.date)}
 								</p>
 								<a href={"/concert/" + m.id}
@@ -118,7 +116,6 @@ export function ConcertMap({
 						</Popup>
 					</Marker>
 				))}
-				{/* Marker della posizione utente */}
 				{userLat && userLng && markers.length === 0 && (
 					<Marker
 						position={[userLat, userLng]}
@@ -129,9 +126,7 @@ export function ConcertMap({
 							iconAnchor: [7, 7],
 						})}
 					>
-						<Popup>
-							<div className="text-sm font-semibold">Sei qui</div>
-						</Popup>
+						<Popup><div className="text-sm font-semibold">Sei qui</div></Popup>
 					</Marker>
 				)}
 			</MapContainer>

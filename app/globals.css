@@ -211,3 +211,12 @@ button:active {
   outline-offset: 1px;
   border-color: transparent;
 }
+
+/* Mappa dark — inverte i colori di OpenStreetMap */
+.dark-map .leaflet-tile {
+	filter: invert(1) hue-rotate(180deg) brightness(0.55) saturate(0.4) !important;
+}
+
+.dark-map .leaflet-container {
+	background: #0E0E12;
+}
