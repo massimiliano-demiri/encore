@@ -9,7 +9,7 @@ import { LogConcert } from "@/components/ui/log-concert"
 import { Setlist } from "@/components/setlist"
 import { ConcertPhotos } from "@/components/concert-photos"
 import { RsvpButton } from "@/components/rsvp-button"
-import { Star, ListMusic, MessageSquare, Users } from "lucide-react"
+import { Star, ListMusic, MessageSquare, Users, CalendarCheck } from "lucide-react"
 import { AddToList } from "@/components/add-to-list"
 import { ReviewLikes } from "@/components/review-likes"
 import { ReviewComments } from "@/components/review-comments"
@@ -38,6 +38,14 @@ type Attendee = {
 	} | null
 }
 
+type RsvpUser = {
+	profiles: {
+		username: string | null
+		display_name: string | null
+		avatar_url: string | null
+	} | null
+}
+
 const fmtDate = (d: string | null) =>
 	d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
 
@@ -46,13 +54,13 @@ export function ConcertClient({ id }: { id: string }) {
 	const [concert, setConcert] = useState<Concert | null>(null)
 	const [reviews, setReviews] = useState<Review[]>([])
 	const [attendees, setAttendees] = useState<Attendee[]>([])
+	const [rsvps, setRsvps] = useState<RsvpUser[]>([])
 	const [loading, setLoading] = useState(true)
 
 	useEffect(() => {
 		const load = async () => {
 			if (!supabase) return
 
-			// 1) Cerca il concerto: prima per UUID, poi per setlistfm_id (Ticketmaster)
 			let { data: c } = await supabase
 				.from("concerts")
 				.select("id, date, artists(name, mbid), venues(name, city)")
@@ -70,11 +78,9 @@ export function ConcertClient({ id }: { id: string }) {
 
 			const concertData = (c as unknown as Concert) ?? null
 			setConcert(concertData)
-
-			// Usa l'UUID trovato (o l'id originale) per le query successive
 			const concertUuid = concertData?.id ?? id
 
-			const [{ data: r }, { data: a }] = await Promise.all([
+			const [{ data: r }, { data: a }, { data: rsvpData }] = await Promise.all([
 				supabase
 					.from("logs")
 					.select("id, rating, review, logged_at, profiles(username, display_name)")
@@ -84,9 +90,14 @@ export function ConcertClient({ id }: { id: string }) {
 					.from("logs")
 					.select("profiles(username, display_name, avatar_url)")
 					.eq("concert_id", concertUuid),
+				supabase
+					.from("rsvps")
+					.select("profiles(username, display_name, avatar_url)")
+					.eq("concert_id", concertUuid),
 			])
 			setReviews((r as unknown as Review[]) ?? [])
 			setAttendees((a as unknown as Attendee[]) ?? [])
+			setRsvps((rsvpData as unknown as RsvpUser[]) ?? [])
 			setLoading(false)
 		}
 		load()
@@ -159,12 +170,13 @@ export function ConcertClient({ id }: { id: string }) {
 					{isFuture && <RsvpButton concertId={concert.id} concertDate={concert.date} />}
 				</div>
 
+				{/* Chi altro c'era */}
 				{uniqueAttendees.length > 0 && (
 					<div>
 						<div className="mb-4 flex items-center gap-3">
 							<div className="h-px w-6 bg-white/10" />
 							<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">
-								Chi altro c&apos;era ({uniqueAttendees.length})
+								Chi c&apos;era ({uniqueAttendees.length})
 							</span>
 						</div>
 						<div className="flex flex-wrap gap-2">
@@ -182,6 +194,42 @@ export function ConcertClient({ id }: { id: string }) {
 											<img src={a.profiles.avatar_url} alt={name} className="h-7 w-7 rounded-full object-cover" />
 										) : (
 											<div className="flex h-7 w-7 items-center justify-center bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-xs font-bold text-white">
+												{initials}
+											</div>
+										)}
+										<span className="text-sm text-white/80">{name}</span>
+									</Link>
+								)
+							})}
+						</div>
+					</div>
+				)}
+
+				{/* Parteciperanno (RSVP — solo concerti futuri) */}
+				{isFuture && rsvps.length > 0 && (
+					<div>
+						<div className="mb-4 flex items-center gap-3">
+							<div className="h-px w-6 bg-[#FFC24B]/40" />
+							<span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#FFC24B]">
+								<CalendarCheck className="inline h-3.5 w-3.5 mr-1.5" />
+								Parteciperanno ({rsvps.length})
+							</span>
+						</div>
+						<div className="flex flex-wrap gap-2">
+							{rsvps.map((r, i) => {
+								const name = r.profiles?.display_name || r.profiles?.username || "Anonimo"
+								const initials = name.trim().slice(0, 2).toUpperCase()
+								const href = r.profiles?.username ? "/u/" + r.profiles.username : "#"
+								return (
+									<Link
+										key={i}
+										href={href}
+										className="flex items-center gap-2 border border-[#FFC24B]/20 bg-[#FFC24B]/[0.03] py-1.5 pl-1.5 pr-4 transition hover:border-[#FFC24B]/50 hover:bg-[#FFC24B]/[0.06]"
+									>
+										{r.profiles?.avatar_url ? (
+											<img src={r.profiles.avatar_url} alt={name} className="h-7 w-7 rounded-full object-cover" />
+										) : (
+											<div className="flex h-7 w-7 items-center justify-center bg-gradient-to-br from-[#FFC24B]/60 to-[#FF2D6B]/60 text-xs font-bold text-white">
 												{initials}
 											</div>
 										)}
