@@ -10,9 +10,7 @@ export async function GET(request: Request) {
 	const keyword = searchParams.get("keyword")
 	const unit = "km"
 
-	if (!TICKETMASTER_KEY) {
-		return NextResponse.json({ events: [] })
-	}
+	if (!TICKETMASTER_KEY) { return NextResponse.json({ events: [] }) }
 
 	let url: string
 	if (keyword) {
@@ -34,9 +32,7 @@ export async function GET(request: Request) {
 		if (!res.ok) return NextResponse.json({ events: [] })
 		const data = await res.json()
 		return NextResponse.json({ events: formatEvents(data) })
-	} catch {
-		return NextResponse.json({ events: [] })
-	}
+	} catch { return NextResponse.json({ events: [] }) }
 }
 
 function formatEvents(data: any) {
@@ -48,6 +44,8 @@ function formatEvents(data: any) {
 		const date = e.dates?.start?.dateTime ?? e.dates?.start?.localDate ?? null
 		const isoDate = date ? date.slice(0, 10) : null
 		const name = e.name ?? e._embedded?.attractions?.[0]?.name ?? "Artista"
+		const priceMin = e.priceRanges?.[0]?.min ?? null
+		const priceCurrency = e.priceRanges?.[0]?.currency ?? null
 
 		return {
 			id: e.id,
@@ -61,6 +59,8 @@ function formatEvents(data: any) {
 			lng: venue.location?.longitude ? parseFloat(venue.location.longitude) : null,
 			imageUrl: e.images?.[0]?.url ?? null,
 			ticketUrl: e.url ?? null,
+			priceMin,
+			priceCurrency,
 		}
 	})
 }

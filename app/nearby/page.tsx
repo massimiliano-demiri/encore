@@ -45,6 +45,8 @@ type NearbyConcert = {
 	artistImage: string | null
 	source: "setlistfm" | "db" | "ticketmaster"
 	ticketUrl: string | null
+	priceMin: number | null
+	priceCurrency: string | null
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -68,7 +70,7 @@ async function fetchArtistImage(mbid: string | null, name: string): Promise<stri
 const fmtDate = (d: string | null) =>
 	d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
 
-const MAX_KM = 100
+const MAX_KM = 50
 
 export default function NearbyPage() {
 	const { user } = useUser()
@@ -108,19 +110,24 @@ export default function NearbyPage() {
 				fetch("/api/ticketmaster-events?" + tmParams.toString()).then((r) => r.ok ? r.json() : { events: [] }),
 			])
 			const { data: dbConcerts } = dbResult
+
 			const tmItems: NearbyConcert[] = ((tmRes.events ?? []) as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artistName, artistMbid: c.artistMbid, venueName: c.venueName, city: c.city, country: c.country,
 				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: c.imageUrl ?? null, source: "ticketmaster" as const, ticketUrl: c.ticketUrl ?? null,
+				priceMin: c.priceMin ?? null, priceCurrency: c.priceCurrency ?? null,
 			}))
 			const sfItems: NearbyConcert[] = ((sfRes.concerts ?? []) as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artistName, artistMbid: c.artistMbid, venueName: c.venueName, city: c.city, country: c.country,
 				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: null, source: "setlistfm" as const, ticketUrl: null,
+				priceMin: null, priceCurrency: null,
 			}))
 			const dbItems: NearbyConcert[] = ((dbConcerts ?? []) as unknown as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artists?.name ?? "Artista", artistMbid: c.artists?.mbid ?? null,
 				venueName: c.venues?.name ?? "", city: c.venues?.city ?? "", country: "", lat: c.venues?.lat ?? null, lng: c.venues?.lng ?? null,
 				distanceKm: null, artistImage: null, source: "db" as const, ticketUrl: null,
+				priceMin: null, priceCurrency: null,
 			}))
+
 			const seen = new Set<string>()
 			const merged: NearbyConcert[] = []
 			for (const c of [...tmItems, ...sfItems, ...dbItems]) {
@@ -176,16 +183,16 @@ export default function NearbyPage() {
 	}, [nearbyConcerts.length > 0 && !imagesLoaded])
 
 	const allMapMarkers = useMemo(() =>
-		[...nearbyConcerts, ...pastConcerts].filter((c) => c.lat != null && c.lng != null).map((c) => ({
+		nearbyConcerts.filter((c) => c.lat != null && c.lng != null).map((c) => ({
 			id: c.id, lat: c.lat!, lng: c.lng!, name: c.artistName, venue: c.venueName, date: c.date ?? "", city: c.city,
 			rsvpCount: 0, artistImage: c.artistImage, ticketUrl: c.ticketUrl,
-		})), [nearbyConcerts, pastConcerts])
+			priceMin: c.priceMin ?? null, priceCurrency: c.priceCurrency ?? null,
+		})), [nearbyConcerts])
 
 	if (loading || geo.loading) return <main className="mx-auto max-w-2xl p-6">Carico…</main>
 
 	return (
 		<main className="mx-auto max-w-3xl px-4 pb-12 pt-6 sm:px-6 sm:pt-10">
-			{/* Header compatto */}
 			<div className="mb-5 flex items-center justify-between">
 				<div>
 					<h1 className="text-2xl font-bold [font-family:var(--font-display)]">Cosa succede vicino a te</h1>
@@ -208,7 +215,6 @@ export default function NearbyPage() {
 				)}
 			</div>
 
-			{/* MAPPA — full width, hero della pagina */}
 			{allMapMarkers.length > 0 ? (
 				<section className="-mx-4 mb-8 sm:-mx-6">
 					<ConcertMap markers={allMapMarkers} userLat={userLat} userLng={userLng} />
@@ -219,7 +225,6 @@ export default function NearbyPage() {
 				</section>
 			) : null}
 
-			{/* PROSSIMI */}
 			{nearbyConcerts.length > 0 && (
 				<section className="mb-10">
 					<div className="mb-4 flex items-center gap-3">
@@ -232,7 +237,6 @@ export default function NearbyPage() {
 						{nearbyConcerts.map((c) => (
 							<div key={c.id}
 								className="flex items-center gap-4 border-l-2 border-[#FFC24B]/20 bg-white/[0.02] py-3.5 pl-4 pr-3 transition hover:border-[#FFC24B]/50 hover:bg-white/[0.04]">
-								{/* Foto artista o icona */}
 								{c.artistImage ? (
 									<img src={c.artistImage} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
 								) : (
@@ -241,7 +245,6 @@ export default function NearbyPage() {
 									</div>
 								)}
 								<div className="min-w-0 flex-1">
-									{/* Nome artista → cliccabile al profilo artista */}
 									<Link href={"/artist/" + (c.artistMbid || encodeURIComponent(c.artistName))}
 										className="text-sm font-semibold text-white hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">
 										{c.artistName}
@@ -255,11 +258,15 @@ export default function NearbyPage() {
 											)}
 										</div>
 									</Link>
-									{/* Link azioni: biglietti, Ticketmaster badge */}
 									<div className="mt-1 flex flex-wrap items-center gap-2">
 										{c.source === "ticketmaster" && (
 											<span className="rounded-full bg-[#FF2D6B]/15 px-2 py-0.5 text-[10px] font-medium text-[#FF2D6B]">
 												Ticketmaster
+											</span>
+										)}
+										{c.priceMin != null && (
+											<span className="text-xs font-medium text-[#FFC24B]">
+												da {c.priceMin}{c.priceCurrency === "EUR" ? "€" : " " + (c.priceCurrency ?? "")}
 											</span>
 										)}
 										{c.ticketUrl && (
@@ -276,7 +283,6 @@ export default function NearbyPage() {
 				</section>
 			)}
 
-			{/* PASSATI (compatti) */}
 			{pastConcerts.length > 0 && (
 				<section className="mb-10">
 					<details className="group">
@@ -296,7 +302,6 @@ export default function NearbyPage() {
 				</section>
 			)}
 
-			{/* PERSONE PER CITTÀ (collassabile) */}
 			{groups.size > 0 && (
 				<details className="group border border-white/10 bg-white/[0.02]">
 					<summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-white/40 hover:text-white/70 transition flex items-center gap-2">

@@ -17,6 +17,8 @@ type ConcertMarker = {
 	rsvpCount: number
 	artistImage: string | null
 	ticketUrl: string | null
+	priceMin: number | null
+	priceCurrency: string | null
 }
 
 function createArtistIcon(imageUrl: string | null, name: string): L.DivIcon {
@@ -66,6 +68,13 @@ function FitBounds({ markers, userLat, userLng }: {
 const fmtDate = (d: string) =>
 	new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })
 
+const fmtPrice = (priceMin: number | null, priceCurrency: string | null): string | null => {
+	if (priceMin == null) return null
+	if (priceCurrency === "EUR") return "da €" + priceMin
+	if (priceCurrency === "USD") return "da $" + priceMin
+	return "da " + priceMin + " " + (priceCurrency ?? "")
+}
+
 export function ConcertMap({
 	markers, userLat, userLng,
 }: {
@@ -88,8 +97,7 @@ export function ConcertMap({
 			>
 				<TileLayer
 					attribution=""
-					url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-				/>
+                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"				/>
 				<FitBounds markers={positions} userLat={userLat} userLng={userLng} />
 				{markers.map((m) => (
 					<Marker key={m.id} position={[m.lat, m.lng]} icon={createArtistIcon(m.artistImage, m.name)}>
@@ -102,6 +110,11 @@ export function ConcertMap({
 								<p className="text-xs flex items-center gap-1 mt-0.5 opacity-70">
 									<Calendar className="h-3 w-3" /> {fmtDate(m.date)}
 								</p>
+								{fmtPrice(m.priceMin, m.priceCurrency) && (
+									<p className="text-xs font-semibold text-[#FFC24B] mt-1">
+										{fmtPrice(m.priceMin, m.priceCurrency)}
+									</p>
+								)}
 								<a href={"/concert/" + m.id}
 									className="mt-1.5 inline-block text-xs font-semibold text-[#FF2D6B] hover:underline">
 									Vedi concerto →
