@@ -59,45 +59,62 @@ export function ConcertClient({ id }: { id: string }) {
 
 	useEffect(() => {
 		const load = async () => {
-			if (!supabase) return
+			if (!supabase) { setLoading(false); return }
 
-			let { data: c } = await supabase
-				.from("concerts")
-				.select("id, date, artists(name, mbid), venues(name, city)")
-				.eq("id", id)
-				.maybeSingle()
-
-			if (!c) {
-				const fallback = await supabase
+			try {
+				// 1) Cerca il concerto: prova UUID, poi setlistfm_id
+				let { data: c } = await supabase
 					.from("concerts")
 					.select("id, date, artists(name, mbid), venues(name, city)")
-					.eq("setlistfm_id", id)
+					.eq("id", id)
 					.maybeSingle()
-				c = fallback.data
+
+				if (!c) {
+					const fallback = await supabase
+						.from("concerts")
+						.select("id, date, artists(name, mbid), venues(name, city)")
+						.eq("setlistfm_id", id)
+						.maybeSingle()
+					c = fallback.data
+				}
+
+				const concertData = (c as unknown as Concert) ?? null
+				setConcert(concertData)
+
+				if (!concertData) { setLoading(false); return }
+
+				// 2) Logs e partecipanti (in parallelo, senza RSVP)
+				const [{ data: r }, { data: a }] = await Promise.all([
+					supabase
+						.from("logs")
+						.select("id, rating, review, logged_at, profiles(username, display_name)")
+						.eq("concert_id", concertData.id)
+						.order("logged_at", { ascending: false }),
+					supabase
+						.from("logs")
+						.select("profiles(username, display_name, avatar_url)")
+						.eq("concert_id", concertData.id),
+				])
+				setReviews((r as unknown as Review[]) ?? [])
+				setAttendees((a as unknown as Attendee[]) ?? [])
+
+				// 3) RSVP — query separata, non deve bloccare il resto se fallisce
+				try {
+					const { data: rsvpData } = await supabase
+						.from("rsvps")
+						.select("profiles(username, display_name, avatar_url)")
+						.eq("concert_id", concertData.id)
+
+					if (rsvpData && (rsvpData as any[]).length > 0) {
+						setRsvps((rsvpData as unknown as RsvpUser[]) ?? [])
+					}
+				} catch {
+					// RSVP non essenziale — se fallisce, ignora
+				}
+			} catch {
+				// Error generico — almeno mostra il messaggio
 			}
 
-			const concertData = (c as unknown as Concert) ?? null
-			setConcert(concertData)
-			const concertUuid = concertData?.id ?? id
-
-			const [{ data: r }, { data: a }, { data: rsvpData }] = await Promise.all([
-				supabase
-					.from("logs")
-					.select("id, rating, review, logged_at, profiles(username, display_name)")
-					.eq("concert_id", concertUuid)
-					.order("logged_at", { ascending: false }),
-				supabase
-					.from("logs")
-					.select("profiles(username, display_name, avatar_url)")
-					.eq("concert_id", concertUuid),
-				supabase
-					.from("rsvps")
-					.select("profiles(username, display_name, avatar_url)")
-					.eq("concert_id", concertUuid),
-			])
-			setReviews((r as unknown as Review[]) ?? [])
-			setAttendees((a as unknown as Attendee[]) ?? [])
-			setRsvps((rsvpData as unknown as RsvpUser[]) ?? [])
 			setLoading(false)
 		}
 		load()
@@ -170,7 +187,6 @@ export function ConcertClient({ id }: { id: string }) {
 					{isFuture && <RsvpButton concertId={concert.id} concertDate={concert.date} />}
 				</div>
 
-				{/* Chi altro c'era */}
 				{uniqueAttendees.length > 0 && (
 					<div>
 						<div className="mb-4 flex items-center gap-3">
@@ -205,7 +221,6 @@ export function ConcertClient({ id }: { id: string }) {
 					</div>
 				)}
 
-				{/* Parteciperanno (RSVP — solo concerti futuri) */}
 				{isFuture && rsvps.length > 0 && (
 					<div>
 						<div className="mb-4 flex items-center gap-3">

@@ -7,13 +7,19 @@ import { Home, Search, Newspaper, User, ListMusic, LogOut, LogIn, MapPin, Bell }
 import { useUser } from "@/lib/use-user"
 import { createClient } from "@/lib/supabase/client"
 
-const links = [
+const desktopLinks = [
 	{ href: "/", label: "Home", Icon: Home },
 	{ href: "/search", label: "Cerca", Icon: Search },
 	{ href: "/feed", label: "Feed", Icon: Newspaper },
 	{ href: "/nearby", label: "Vicino", Icon: MapPin },
 	{ href: "/lists", label: "Liste", Icon: ListMusic },
 	{ href: "/me", label: "Profilo", Icon: User },
+]
+
+const mobileLinks = [
+	{ href: "/", label: "Home", Icon: Home },
+	{ href: "/nearby", label: "Vicino", Icon: MapPin },
+	{ href: "/search", label: "Cerca", Icon: Search },
 ]
 
 export function NavBar() {
@@ -58,7 +64,7 @@ export function NavBar() {
 						Enc<span className="text-[#FF2D6B]">o</span>re
 					</Link>
 					<nav className="hidden items-center gap-1 sm:flex">
-						{links.map((l) => (
+						{desktopLinks.map((l) => (
 							<Link
 								key={l.href}
 								href={l.href}
@@ -108,10 +114,10 @@ export function NavBar() {
 				</div>
 			</header>
 
-			{/* Mobile bottom bar — fissata in fondo, senza margini, safe-area */}	
+			{/* Mobile bottom bar — 4 icone + badge notifiche sul Profilo */}
 			<nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#0E0E12] pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
 				<div className="flex items-stretch justify-around">
-					{links.slice(0, 4).map((l) => (
+					{mobileLinks.map((l) => (
 						<Link
 							key={l.href}
 							href={l.href}
@@ -124,35 +130,35 @@ export function NavBar() {
 							{l.label}
 						</Link>
 					))}
-					{user && (
+					{/* Profilo con badge notifiche */}
+					{user ? (
 						<Link
-							href="/notifications"
+							href="/me"
 							className={
 								"relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] transition " +
-								(isActive("/notifications") ? "text-[#FF2D6B]" : "text-white/55")
+								(isActive("/me") ? "text-[#FF2D6B]" : "text-white/55")
 							}
 						>
-							<Bell className="h-5 w-5" />
+							<User className="h-5 w-5" />
 							{unread > 0 && (
 								<span className="absolute right-2 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#FF2D6B] px-1 text-[10px] font-bold text-white">
 									{unread > 9 ? "9+" : unread}
 								</span>
 							)}
+							Profilo
 						</Link>
-					)}
-					{links.slice(4).map((l) => (
+					) : (
 						<Link
-							key={l.href}
-							href={l.href}
+							href="/login"
 							className={
 								"flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] transition " +
-								(isActive(l.href) ? "text-[#FF2D6B]" : "text-white/55")
+								(isActive("/login") ? "text-[#FF2D6B]" : "text-white/55")
 							}
 						>
-							<l.Icon className="h-5 w-5" />
-							{l.label}
+							<LogIn className="h-5 w-5" />
+							Accedi
 						</Link>
-					))}
+					)}
 				</div>
 			</nav>
 		</>

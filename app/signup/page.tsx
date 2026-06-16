@@ -72,8 +72,7 @@ export default function SignupPage() {
 				display_name: displayName.trim() || clean,
 				city: city.trim() || null,
 			}).eq("id", data.user.id)
-			router.push("/me")
-		} else {
+router.push("/welcome")		} else {
 			setSent(true)
 		}
 	}
