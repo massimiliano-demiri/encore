@@ -61,6 +61,7 @@ export default function NearbyPage() {
 	const [pastConcerts, setPastConcerts] = useState<NearbyConcert[]>([])
 	const [loading, setLoading] = useState(true)
 	const [imagesLoaded, setImagesLoaded] = useState(false)
+	const [errors, setErrors] = useState<string[]>([])
 	const [profileCity, setProfileCity] = useState<string | null>(null)
 
 	useEffect(() => {
@@ -87,6 +88,11 @@ export default function NearbyPage() {
 				supabase.from("concerts").select("id, date, artists(name, mbid), venues(name, city, lat, lng)").order("date", { ascending: true }).limit(100),
 				fetch("/api/ticketmaster-events?" + tmParams).then(r => r.ok ? r.json() : { events: [] }),
 			])
+			const newErrors: string[] = []
+if (results[0].status === "rejected") newErrors.push("Setlist.fm non disponibile")
+if (results[1].status === "rejected") newErrors.push("Database non disponibile")
+if (results[2].status === "rejected") newErrors.push("Ticketmaster non disponibile")
+setErrors(newErrors)
 
 			const sfRes = results[0].status === "fulfilled" ? results[0].value : { concerts: [] }
 			const dbResult = results[1].status === "fulfilled" ? results[1].value : { data: [] }
@@ -184,6 +190,11 @@ export default function NearbyPage() {
 					)}
 				</div>
 				{!user && <Link href="/signup" className="shrink-0 bg-[#FF2D6B] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:brightness-110">Inizia</Link>}
+				{errors.length > 0 && (
+	<div className="mb-6 border-l-2 border-[#FFC24B]/40 bg-[#FFC24B]/[0.03] py-2 pl-4 text-xs text-[#FFC24B]">
+		{errors.join(" · ")} — stiamo riprovando.
+	</div>
+)}
 			</div>
 
 			{allMapMarkers.length > 0 ? (

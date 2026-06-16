@@ -28,17 +28,31 @@ export async function generateMetadata(
 	const { mbid } = await params
 	const a = await getArtistMeta(mbid)
 	if (!a) return { title: "Artista | Encore" }
+
 	const name = a.name
 	const title = name + " — concerti e recensioni | Encore"
 	const description =
 		"Tutti i concerti di " + name + " dal vivo: scalette, recensioni e voti della community su Encore."
 	const url = SITE + "/artist/" + mbid
+	const ogImage = SITE + "/api/og/artist/" + mbid
+
 	return {
 		title,
 		description,
 		alternates: { canonical: url },
-		openGraph: { title, description, url, type: "article" },
-		twitter: { card: "summary", title, description },
+		openGraph: {
+			title,
+			description,
+			url,
+			type: "article",
+			images: [{ url: ogImage, width: 1200, height: 630 }],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title,
+			description,
+			images: [ogImage],
+		},
 	}
 }
 
