@@ -5,6 +5,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { Plus, ListMusic, Lock, Globe } from "lucide-react"
+import { SectionHeader } from "@/components/section-header"
 
 type ListRow = { id: string; title: string | null; description: string | null; is_public: boolean }
 
@@ -88,13 +89,7 @@ export default function ListsPage() {
 					{lists.map((l) => (
 						<Link key={l.id} href={"/list/" + l.id}
 							className="flex items-center justify-between border-l-2 border-white/10 bg-white/[0.02] py-3 pl-4 pr-4 transition hover:border-[#FF2D6B]/30 hover:bg-white/[0.04]">
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center bg-[#FF2D6B]/15"><ListMusic className="h-5 w-5 text-[#FF2D6B]" /></div>
-								<div>
-									<div className="font-medium">{l.title || "Senza titolo"}</div>
-									{l.description && <div className="text-sm text-white/50">{l.description}</div>}
-								</div>
-							</div>
+							<SectionHeader label="Le tue liste" />
 							{l.is_public ? <Globe className="h-4 w-4 text-white/40" /> : <Lock className="h-4 w-4 text-white/40" />}
 						</Link>
 					))}

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { ArtistImage } from "@/components/artsit-image"
 import { Star, Newspaper } from "lucide-react"
+import { SectionHeader } from "@/components/section-header"
 
 type FeedItem = {
 	id: string
@@ -57,10 +58,7 @@ export default function FeedPage() {
 
 	return (
 		<main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
-			<div className="flex items-center gap-3">
-				<div className="h-px w-6 bg-white/10" />
-				<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">Feed</span>
-			</div>
+			<SectionHeader label="Feed" />
 
 			<div className="flex gap-2">
 				<button onClick={() => setTab("all")}

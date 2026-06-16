@@ -14,6 +14,7 @@ import { AddToList } from "@/components/add-to-list"
 import { ReviewLikes } from "@/components/review-likes"
 import { ReviewComments } from "@/components/review-comments"
 import { ShareCardButton } from "@/components/share-card-button"
+import { SectionHeader } from "@/components/section-header"
 
 type Concert = {
 	id: string
@@ -207,12 +208,8 @@ if (!c) {
 
 				{uniqueAttendees.length > 0 && (
 					<div>
-						<div className="mb-4 flex items-center gap-3">
-							<div className="h-px w-6 bg-white/10" />
-							<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">
-								Chi c&apos;era ({uniqueAttendees.length})
-							</span>
-						</div>
+						<SectionHeader label={"Chi c'era (" + uniqueAttendees.length + ")"} />
+
 						<div className="flex flex-wrap gap-2">
 							{uniqueAttendees.map((a, i) => {
 								const name = a.profiles?.display_name || a.profiles?.username || "Anonimo"
@@ -241,13 +238,8 @@ if (!c) {
 
 				{isFuture && rsvps.length > 0 && (
 					<div>
-						<div className="mb-4 flex items-center gap-3">
-							<div className="h-px w-6 bg-[#FFC24B]/40" />
-							<span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#FFC24B]">
-								<CalendarCheck className="inline h-3.5 w-3.5 mr-1.5" />
-								Parteciperanno ({rsvps.length})
-							</span>
-						</div>
+					<SectionHeader label={"Parteciperanno (" + rsvps.length + ")"} color="[#FFC24B]" />
+
 						<div className="flex flex-wrap gap-2">
 							{rsvps.map((r, i) => {
 								const name = r.profiles?.display_name || r.profiles?.username || "Anonimo"
@@ -278,22 +270,15 @@ if (!c) {
 				<AddToList concertId={concert.id} />
 
 				<div>
-					<div className="mb-4 flex items-center gap-3">
-						<div className="h-px w-6 bg-white/10" />
-						<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">Scaletta</span>
-					</div>
+					<SectionHeader label="Scaletta" />
 					<Setlist mbid={concert.artists?.mbid ?? null} date={concert.date} />
 				</div>
 
 				<ConcertPhotos concertId={concert.id} />
 
 				<div>
-					<div className="mb-4 flex items-center gap-3">
-						<div className="h-px w-6 bg-white/10" />
-						<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">
-							Recensioni ({reviews.length})
-						</span>
-					</div>
+					<SectionHeader label={"Recensioni (" + reviews.length + ")"} />
+
 					{reviews.length === 0 ? (
 						<p className="border-l-2 border-white/5 py-3 pl-4 text-sm text-white/40">
 							Nessuna recensione ancora. Sii il primo!
