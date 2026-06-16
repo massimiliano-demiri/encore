@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 	const keyword = searchParams.get("keyword")
 	const unit = "km"
 
-	if (!TICKETMASTER_KEY) { return NextResponse.json({ events: [] }) }
+	if (!TICKETMASTER_KEY) return NextResponse.json({ events: [] })
 
 	let url: string
 	if (keyword) {
@@ -31,8 +31,12 @@ export async function GET(request: Request) {
 		const res = await fetch(url)
 		if (!res.ok) return NextResponse.json({ events: [] })
 		const data = await res.json()
-		return NextResponse.json({ events: formatEvents(data) })
-	} catch { return NextResponse.json({ events: [] }) }
+		const response = NextResponse.json({ events: formatEvents(data) })
+		response.headers.set("Cache-Control", "public, max-age=600, s-maxage=600")
+		return response
+	} catch {
+		return NextResponse.json({ events: [] })
+	}
 }
 
 function formatEvents(data: any) {

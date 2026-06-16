@@ -21,7 +21,9 @@ export async function GET(request: Request) {
 			name: a.name,
 			info: a.disambiguation ?? a.country ?? "",
 		}))
-		return NextResponse.json({ artists })
+		const response = NextResponse.json({ artists })
+		response.headers.set("Cache-Control", "public, max-age=300, s-maxage=300")
+		return response
 	} catch {
 		return NextResponse.json({ artists: [] })
 	}

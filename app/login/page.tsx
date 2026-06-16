@@ -56,9 +56,9 @@ export default function LoginPage() {
 						<Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
 						<input type={showPw ? "text" : "password"} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
 							className="w-full border border-white/15 bg-white/5 py-2.5 pl-9 pr-10 text-sm outline-none transition focus:border-[#FF2D6B]" />
-						<button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
-							{showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-						</button>
+					<button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60" aria-label={showPw ? "Nascondi password" : "Mostra password"}>
+    {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+</button>
 					</div>
 					<div className="flex justify-end">
 						<Link href="/forgot-password" className="text-xs text-white/40 hover:text-white/70 transition">Password dimenticata?</Link>

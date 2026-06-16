@@ -7,7 +7,6 @@ export async function GET(request: Request) {
 	const mbid = searchParams.get("mbid")
 	const q = searchParams.get("q")
 
-	// 1) fanart.tv: foto vera dell'artista, cercata per MBID (che già salviamo)
 	if (mbid) {
 		try {
 			const res = await fetch(
@@ -19,14 +18,15 @@ export async function GET(request: Request) {
 				const thumbs = (data.artistthumb ?? []) as Array<{ url: string }>
 				const backgrounds = (data.artistbackground ?? []) as Array<{ url: string }>
 				const best = thumbs[0]?.url ?? backgrounds[0]?.url ?? null
-				if (best) return NextResponse.json({ image: best, source: "fanart" })
+				if (best) {
+					const response = NextResponse.json({ image: best, source: "fanart" })
+					response.headers.set("Cache-Control", "public, max-age=86400, s-maxage=86400")
+					return response
+				}
 			}
-		} catch {
-			// ignora, passa al fallback
-		}
+		} catch { /* fallback */ }
 	}
 
-	// 2) Fallback: copertina album da iTunes, cercata per nome
 	if (q) {
 		try {
 			const res = await fetch(
@@ -35,7 +35,9 @@ export async function GET(request: Request) {
 			const data = await res.json()
 			const raw = data.results?.[0]?.artworkUrl100 as string | undefined
 			const image = raw ? raw.replace("100x100bb", "600x600bb") : null
-			return NextResponse.json({ image, source: image ? "itunes" : null })
+			const response = NextResponse.json({ image, source: image ? "itunes" : null })
+			response.headers.set("Cache-Control", "public, max-age=3600, s-maxage=3600")
+			return response
 		} catch {
 			return NextResponse.json({ image: null, source: null })
 		}

@@ -89,11 +89,12 @@ function SearchInner() {
 					/>
 					{q && (
 						<button
-							onClick={() => { setQ(""); setResults([]) }}
-							className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-white/30 hover:text-white"
-						>
-							✕
-						</button>
+    onClick={() => { setQ(""); setResults([]) }}
+    className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-white/30 hover:text-white"
+    aria-label="Cancella ricerca"
+>
+    ✕
+</button>
 					)}
 				</div>
 			</div>
