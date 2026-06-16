@@ -7,10 +7,9 @@ import { LogConcert } from "@/components/ui/log-concert"
 import { RsvpButton } from "@/components/rsvp-button"
 import { ArtistImage } from "@/components/artsit-image"
 import { Skeleton } from "@/components/skeleton"
-import { ArrowLeft, MapPin, Calendar, Ticket, Music } from "lucide-react"
+import { ArrowLeft, MapPin, Calendar, Ticket, Music, ChevronRight } from "lucide-react"
 
 /* ─── tipi ─── */
-
 type Concert = {
 	id: string
 	date: string | null
@@ -23,7 +22,6 @@ type Concert = {
 }
 
 /* ─── helper ─── */
-
 const fmtDate = (d: string | null): string => {
 	if (!d) return "data sconosciuta"
 	const t = new Date(d)
@@ -56,7 +54,6 @@ async function fetchSetlist(mbid: string, date: string): Promise<string[]> {
 }
 
 /* ─── componente ─── */
-
 export function ArtistClient({ mbid }: { mbid: string }) {
 	const { user } = useUser()
 	const [artist, setArtist] = useState("")
@@ -66,8 +63,7 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 	const [page, setPage] = useState(1)
 	const [total, setTotal] = useState(0)
 	const [loadingMore, setLoadingMore] = useState(false)
-	const yearBarRef = useRef<HTMLDivElement>(null)
-
+	const yearBarRef = useRef<HTMLDivElement | null>(null)
 	const today = new Date().toISOString().slice(0, 10)
 
 	const { upcomingFromSetlist, past } = useMemo<{ upcomingFromSetlist: Concert[]; past: Concert[] }>(() => {
@@ -94,7 +90,6 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 	}, [past])
 
 	const years = useMemo(() => pastByYear.map(([y]) => y), [pastByYear])
-
 	const hasMore = concerts.length < total
 
 	useEffect(() => {
@@ -252,16 +247,22 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 							</div>
 						)}
 
-						{/* ── PASSATI (timeline per anno) ── */}
-						{pastByYear.map(([year, yearConcerts]) => (
-							<div key={year} id={"year-" + year}>
-								<div className="mb-3 flex items-center gap-3">
+						{/* ── PASSATI (timeline per anno, collassabile) ── */}
+						{pastByYear.map(([year, yearConcerts], yearIndex) => (
+							<details
+								key={year}
+								id={"year-" + year}
+								open={yearIndex === 0}
+								className="group/year"
+							>
+								<summary className="mb-3 flex cursor-pointer list-none items-center gap-3 select-none">
+									<ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/25 transition-transform group-open/year:rotate-90" />
 									<div className="h-px w-6 bg-white/10" />
 									<span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30">
 										{year} ({yearConcerts.length})
 									</span>
-								</div>
-								<div className="flex flex-col gap-2">
+								</summary>
+								<div className="flex flex-col gap-2 pl-1">
 									{yearConcerts.slice(0, 3).map((c) => (
 										<ConcertRow key={c.id} c={c} user={user} />
 									))}
@@ -278,7 +279,7 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 										</details>
 									)}
 								</div>
-							</div>
+							</details>
 						))}
 					</>
 				)}
@@ -298,7 +299,6 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 }
 
 /* ── Card concerto (con scaletta inline) ── */
-
 function ConcertRow({ c, user, minimal }: { c: Concert; user: any; minimal?: boolean }) {
 	const [showForm, setShowForm] = useState(false)
 	const isFuture = c.date ? new Date(c.date) > new Date() : false

@@ -49,7 +49,7 @@ export function Setlist({ mbid, date }: { mbid: string | null; date: string | nu
 							href={youtubeSearchUrl(s.name)}
 							target="_blank"
 							rel="noopener"
-							className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-white/15 opacity-0 group-hover:opacity-100 hover:text-[#FF2D6B] hover:bg-white/[0.05] transition"
+							className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-white/25 hover:text-[#FF2D6B] hover:bg-white/[0.05] active:scale-95 transition"
 							aria-label={"Cerca " + s.name + " su YouTube"}
 							title={"Cerca su YouTube: " + artistName + " - " + s.name}
 						>
