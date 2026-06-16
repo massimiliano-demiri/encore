@@ -9,7 +9,7 @@ import { LogConcert } from "@/components/ui/log-concert"
 import { Setlist } from "@/components/setlist"
 import { ConcertPhotos } from "@/components/concert-photos"
 import { RsvpButton } from "@/components/rsvp-button"
-import { Star, ListMusic, MessageSquare, Users, CalendarCheck } from "lucide-react"
+import { Star, CalendarCheck } from "lucide-react"
 import { AddToList } from "@/components/add-to-list"
 import { ReviewLikes } from "@/components/review-likes"
 import { ReviewComments } from "@/components/review-comments"
@@ -22,7 +22,6 @@ type Concert = {
 	artists: { name: string; mbid: string | null } | null
 	venues: { name: string; city: string | null } | null
 }
-
 type Review = {
 	id: string
 	rating: number | null
@@ -30,22 +29,8 @@ type Review = {
 	logged_at: string
 	profiles: { username: string | null; display_name: string | null } | null
 }
-
-type Attendee = {
-	profiles: {
-		username: string | null
-		display_name: string | null
-		avatar_url: string | null
-	} | null
-}
-
-type RsvpUser = {
-	profiles: {
-		username: string | null
-		display_name: string | null
-		avatar_url: string | null
-	} | null
-}
+type Attendee = { profiles: { username: string | null; display_name: string | null; avatar_url: string | null } | null }
+type RsvpUser = { profiles: { username: string | null; display_name: string | null; avatar_url: string | null } | null }
 
 const fmtDate = (d: string | null) =>
 	d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
@@ -68,7 +53,6 @@ export function ConcertClient({ id }: { id: string }) {
 					.select("id, date, artists(name, mbid), venues(name, city)")
 					.eq("id", id)
 					.maybeSingle()
-
 				if (!c) {
 					const fallback = await supabase
 						.from("concerts")
@@ -94,11 +78,9 @@ export function ConcertClient({ id }: { id: string }) {
 						}
 					} catch { /* ignore */ }
 				}
-
 				const concertData = (c as unknown as Concert) ?? null
 				setConcert(concertData)
 				if (!concertData) { setLoading(false); return }
-
 				// 2) Logs e partecipanti (in parallelo, senza RSVP)
 				const [{ data: r }, { data: a }] = await Promise.all([
 					supabase
@@ -113,7 +95,6 @@ export function ConcertClient({ id }: { id: string }) {
 				])
 				setReviews((r as unknown as Review[]) ?? [])
 				setAttendees((a as unknown as Attendee[]) ?? [])
-
 				// 3) RSVP — query separata, non deve bloccare il resto se fallisce
 				try {
 					const { data: rsvpData } = await supabase
@@ -127,7 +108,7 @@ export function ConcertClient({ id }: { id: string }) {
 					// RSVP non essenziale — se fallisce, ignora
 				}
 			} catch {
-				// Error generico — almeno mostra il messaggio
+				// Error generico
 			}
 			setLoading(false)
 		}
@@ -160,10 +141,7 @@ export function ConcertClient({ id }: { id: string }) {
 	if (!concert) return <main className="p-6">Concerto non trovato.</main>
 
 	const rated = reviews.filter((x) => x.rating != null)
-	const avg =
-		rated.length > 0
-			? (rated.reduce((s, x) => s + (x.rating ?? 0), 0) / rated.length).toFixed(1)
-			: null
+	const avg = rated.length > 0 ? (rated.reduce((s, x) => s + (x.rating ?? 0), 0) / rated.length).toFixed(1) : null
 	const artist = concert.artists?.name ?? "Artista"
 	const isFuture = concert.date ? new Date(concert.date) > new Date() : false
 
@@ -184,9 +162,8 @@ export function ConcertClient({ id }: { id: string }) {
 			</div>
 
 			<div className="mx-auto flex max-w-2xl flex-col gap-8 p-6">
-
 				{isFuture ? (
-					/* ── CONCERTO FUTURO: CTA partecipazione ── */
+					/* ── CONCERTO FUTURO: solo anticipazione ── */
 					<div className="border-l-2 border-[#FFC24B]/40 bg-[#FFC24B]/[0.04] py-5 pl-5 pr-4">
 						<div className="flex items-center gap-2 text-[#FFC24B]">
 							<CalendarCheck className="h-5 w-5" />
@@ -196,8 +173,8 @@ export function ConcertClient({ id }: { id: string }) {
 						</div>
 						<p className="mt-1.5 text-sm text-white/60">
 							{rsvps.length === 0
-								? "Questo concerto deve ancora arrivare. Metti \u201CParteciperò\u201D e sarai il primo a segnalare che ci sarai."
-								: rsvps.length + (rsvps.length === 1 ? " persona ha" : " persone hanno") + " già confermato. Unisciti a loro."}
+								? "Questo concerto deve ancora arrivare. Metti \u201CParteciper\u00F2\u201D e sarai il primo a segnalare che ci sarai."
+								: rsvps.length + (rsvps.length === 1 ? " persona ha" : " persone hanno") + " gi\u00E0 confermato. Unisciti a loro."}
 						</p>
 						<div className="mt-3">
 							<RsvpButton concertId={concert.id} concertDate={concert.date} />
@@ -231,17 +208,11 @@ export function ConcertClient({ id }: { id: string }) {
 								const initials = name.trim().slice(0, 2).toUpperCase()
 								const href = a.profiles?.username ? "/u/" + a.profiles.username : "#"
 								return (
-									<Link
-										key={i}
-										href={href}
-										className="flex items-center gap-2 border border-white/10 bg-white/[0.02] py-1.5 pl-1.5 pr-4 transition hover:border-[#FF2D6B]/40 hover:bg-white/[0.05]"
-									>
+									<Link key={i} href={href} className="flex items-center gap-2 border border-white/10 bg-white/[0.02] py-1.5 pl-1.5 pr-4 transition hover:border-[#FF2D6B]/40 hover:bg-white/[0.05]">
 										{a.profiles?.avatar_url ? (
 											<img src={a.profiles.avatar_url} alt={name} className="h-7 w-7 rounded-full object-cover" />
 										) : (
-											<div className="flex h-7 w-7 items-center justify-center bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-xs font-bold text-white">
-												{initials}
-											</div>
+											<div className="flex h-7 w-7 items-center justify-center bg-gradient-to-br from-[#FF2D6B]/60 to-[#7A5CFF]/60 text-xs font-bold text-white">{initials}</div>
 										)}
 										<span className="text-sm text-white/80">{name}</span>
 									</Link>
@@ -260,17 +231,11 @@ export function ConcertClient({ id }: { id: string }) {
 								const initials = name.trim().slice(0, 2).toUpperCase()
 								const href = r.profiles?.username ? "/u/" + r.profiles.username : "#"
 								return (
-									<Link
-										key={i}
-										href={href}
-										className="flex items-center gap-2 border border-[#FFC24B]/20 bg-[#FFC24B]/[0.03] py-1.5 pl-1.5 pr-4 transition hover:border-[#FFC24B]/50 hover:bg-[#FFC24B]/[0.06]"
-									>
+									<Link key={i} href={href} className="flex items-center gap-2 border border-[#FFC24B]/20 bg-[#FFC24B]/[0.03] py-1.5 pl-1.5 pr-4 transition hover:border-[#FFC24B]/50 hover:bg-[#FFC24B]/[0.06]">
 										{r.profiles?.avatar_url ? (
 											<img src={r.profiles.avatar_url} alt={name} className="h-7 w-7 rounded-full object-cover" />
 										) : (
-											<div className="flex h-7 w-7 items-center justify-center bg-gradient-to-br from-[#FFC24B]/60 to-[#FF2D6B]/60 text-xs font-bold text-white">
-												{initials}
-											</div>
+											<div className="flex h-7 w-7 items-center justify-center bg-gradient-to-br from-[#FFC24B]/60 to-[#FF2D6B]/60 text-xs font-bold text-white">{initials}</div>
 										)}
 										<span className="text-sm text-white/80">{name}</span>
 									</Link>
@@ -280,10 +245,12 @@ export function ConcertClient({ id }: { id: string }) {
 					</div>
 				)}
 
-				<LogConcert concertId={concert.id} concertDate={concert.date} />
+				{/* Wishlist: ok anche per i futuri */}
 				<AddToList concertId={concert.id} />
 
-				{/* Scaletta — solo per concerti passati (un futuro non ha ancora setlist) */}
+				{/* ── Da qui in giù: SOLO concerti passati (diario) ── */}
+				{!isFuture && <LogConcert concertId={concert.id} concertDate={concert.date} />}
+
 				{!isFuture && (
 					<div>
 						<SectionHeader label="Scaletta" />
@@ -291,10 +258,9 @@ export function ConcertClient({ id }: { id: string }) {
 					</div>
 				)}
 
-				<ConcertPhotos concertId={concert.id} />
+				{!isFuture && <ConcertPhotos concertId={concert.id} />}
 
-				{/* Recensioni — per i futuri non ha senso mostrarle vuote */}
-				{(!isFuture || reviews.length > 0) && (
+				{!isFuture && (
 					<div>
 						<SectionHeader label={"Recensioni (" + reviews.length + ")"} />
 						{reviews.length === 0 ? (
@@ -304,10 +270,7 @@ export function ConcertClient({ id }: { id: string }) {
 						) : (
 							<div className="flex flex-col gap-3">
 								{reviews.map((x) => (
-									<div
-										key={x.id}
-										className="group border-l-2 border-white/10 bg-white/[0.02] py-4 pl-5 transition hover:border-[#FF2D6B]/30"
-									>
+									<div key={x.id} className="group border-l-2 border-white/10 bg-white/[0.02] py-4 pl-5 transition hover:border-[#FF2D6B]/30">
 										<div className="flex items-center justify-between">
 											<div className="flex flex-col">
 												<span className="text-sm font-semibold text-white">
@@ -315,9 +278,7 @@ export function ConcertClient({ id }: { id: string }) {
 														<Link href={"/u/" + x.profiles.username} className="hover:text-[#FFC24B] transition-colors">
 															{x.profiles.display_name || x.profiles.username}
 														</Link>
-													) : (
-														"Qualcuno"
-													)}
+													) : ("Qualcuno")}
 												</span>
 												<span className="text-xs text-white/40">{fmtDate(x.logged_at)}</span>
 											</div>
