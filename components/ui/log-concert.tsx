@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { PhotoUpload } from "@/components/photo-upload"
@@ -13,31 +14,18 @@ export function LogConcert({ concertId, concertDate }: { concertId: string; conc
 	const [review, setReview] = useState("")
 	const [logId, setLogId] = useState<string | null>(null)
 	const [saving, setSaving] = useState(false)
-	const [msg, setMsg] = useState<string | null>(null)
-
 	const isFuture = concertDate ? new Date(concertDate) > new Date() : false
 
 	useEffect(() => {
 		if (!user || !supabase) return
-		supabase
-			.from("logs")
-			.select("id, rating, review")
-			.eq("user_id", user.id)
-			.eq("concert_id", concertId)
-			.maybeSingle()
+		supabase.from("logs").select("id, rating, review").eq("user_id", user.id).eq("concert_id", concertId).maybeSingle()
 			.then(({ data }) => {
-				if (data) {
-					setLogId(data.id)
-					setRating(data.rating != null ? String(data.rating) : "")
-					setReview(data.review ?? "")
-				}
+				if (data) { setLogId(data.id); setRating(data.rating != null ? String(data.rating) : ""); setReview(data.review ?? "") }
 			})
 	}, [user, concertId, supabase])
 
-	if (!user)
-		return <p className="text-sm text-white/50">Accedi per votare questo concerto.</p>
+	if (!user) return <p className="text-sm text-white/50">Accedi per votare questo concerto.</p>
 
-	// Concerto futuro: niente form di voto
 	if (isFuture) {
 		return (
 			<div className="border-l-2 border-[#FFC24B]/20 bg-white/[0.02] py-3 pl-4">
@@ -53,77 +41,42 @@ export function LogConcert({ concertId, concertDate }: { concertId: string; conc
 		e.preventDefault()
 		if (!supabase) return
 		setSaving(true)
-		setMsg(null)
 		const { data, error } = await supabase
 			.from("logs")
-			.upsert(
-				{
-					user_id: user.id,
-					concert_id: concertId,
-					rating: rating ? Number(rating) : null,
-					review: review.trim() || null,
-				},
-				{ onConflict: "user_id,concert_id" },
-			)
-			.select("id")
-			.maybeSingle()
+			.upsert({ user_id: user.id, concert_id: concertId, rating: rating ? Number(rating) : null, review: review.trim() || null }, { onConflict: "user_id,concert_id" })
+			.select("id").maybeSingle()
 		setSaving(false)
-		if (error) {
-			setMsg(error.message)
-			return
-		}
+		if (error) { toast.error(error.message); return }
 		if (data) setLogId(data.id)
-		setMsg("Salvato! Ora puoi aggiungere le foto qui sotto.")
+		toast.success(logId ? "Voto aggiornato" : "Concerto salvato nel tuo diario")
 	}
 
 	const remove = async () => {
 		if (!supabase) return
 		if (!confirm("Vuoi eliminare questo log?")) return
 		await supabase.from("logs").delete().eq("user_id", user.id).eq("concert_id", concertId)
-		window.location.reload()
+		toast.success("Concerto rimosso")
+		setTimeout(() => window.location.reload(), 800)
 	}
 
 	return (
 		<form onSubmit={save} className="flex flex-col gap-3 border-l-2 border-white/10 bg-white/[0.02] py-3 pl-4">
-			<h3 className="font-semibold text-white">
-				{logId ? "Modifica il tuo voto" : "C'eri? Vota e racconta"}
-			</h3>
+			<h3 className="font-semibold text-white">{logId ? "Modifica il tuo voto" : "C'eri? Vota e racconta"}</h3>
 			<div className="flex items-center gap-2">
 				<label className="text-sm text-white/50">Voto</label>
-				<select
-					value={rating}
-					onChange={(e) => setRating(e.target.value)}
-					className="rounded border border-white/15 bg-white/5 px-2 py-1 text-sm"
-				>
+				<select value={rating} onChange={(e) => setRating(e.target.value)} className="rounded border border-white/15 bg-white/5 px-2 py-1 text-sm">
 					<option value="">—</option>
-					{[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((n) => (
-						<option key={n} value={n}>{n}★</option>
-					))}
+					{[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((n) => (<option key={n} value={n}>{n}★</option>))}
 				</select>
 			</div>
-			<textarea
-				value={review}
-				onChange={(e) => setReview(e.target.value)}
-				placeholder="Com'è stato? (facoltativo)"
-				rows={3}
-				className="rounded border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none focus:border-[#FF2D6B]"
-			/>
-			{msg && <p className="text-sm text-white/50">{msg}</p>}
+			<textarea value={review} onChange={(e) => setReview(e.target.value)} placeholder="Com'è stato? (facoltativo)" rows={3}
+				className="rounded border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none focus:border-[#FF2D6B]" />
 			<div className="flex items-center gap-2">
-				<button
-					disabled={saving}
-					className="rounded bg-[#FF2D6B] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-				>
+				<button disabled={saving} className="rounded bg-[#FF2D6B] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
 					{saving ? "Salvo…" : logId ? "Aggiorna" : "Salva"}
 				</button>
 				{logId && (
-					<button
-						type="button"
-						onClick={remove}
-						className="rounded border border-white/15 px-4 py-2 text-sm hover:bg-white/5"
-					>
-						Elimina
-					</button>
+					<button type="button" onClick={remove} className="rounded border border-white/15 px-4 py-2 text-sm hover:bg-white/5">Elimina</button>
 				)}
 			</div>
 			{logId && (

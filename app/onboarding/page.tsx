@@ -15,33 +15,30 @@ export default function OnboardingPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [saving, setSaving] = useState(false)
 
-	useEffect(() => {
-		if (!loading && !user) router.push("/login")
-	}, [loading, user])
+	useEffect(() => { if (!loading && !user) router.push("/login") }, [loading, user])
 
 	const save = async (e: React.FormEvent) => {
 		e.preventDefault()
 		if (!supabase || !user) return
 		const clean = username.toLowerCase().trim().replace(/[^a-z0-9._]/g, "")
-		if (clean.length < 3) {
-			setError("Lo username deve avere almeno 3 caratteri (lettere, numeri, . o _).")
-			return
-		}
+		if (clean.length < 3) { setError("Lo username deve avere almeno 3 caratteri (lettere, numeri, . o _)."); return }
 		setSaving(true)
 		setError(null)
-		const { error: err } = await supabase
-			.from("profiles")
-			.update({ username: clean, display_name: displayName.trim() || clean })
-			.eq("id", user.id)
+		const { error: err } = await supabase.from("profiles").update({ username: clean, display_name: displayName.trim() || clean }).eq("id", user.id)
 		setSaving(false)
-		if (err) {
-			setError(err.code === "23505" ? "Username già in uso, scegline un altro." : err.message)
-			return
-		}
+		if (err) { setError(err.code === "23505" ? "Username già in uso, scegline un altro." : err.message); return }
 		router.push("/me")
 	}
 
-	if (loading) return <main className="p-6">Carico…</main>
+	if (loading) return (
+		<main className="flex min-h-screen items-center justify-center p-6">
+			<div className="w-full max-w-sm space-y-4">
+				<div className="h-8 w-3/4 animate-pulse border-l-2 border-white/5 bg-white/[0.02]" />
+				<div className="h-12 w-full animate-pulse border-l-2 border-white/5 bg-white/[0.02]" />
+				<div className="h-12 w-full animate-pulse border-l-2 border-white/5 bg-white/[0.02]" />
+			</div>
+		</main>
+	)
 
 	return (
 		<main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-6">
@@ -54,29 +51,19 @@ export default function OnboardingPage() {
 						Ti serve per il profilo pubblico: encored.app/u/<span className="text-white">tuonome</span>
 					</p>
 				</div>
-				<form onSubmit={save} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+
+				<form onSubmit={save} className="flex flex-col gap-3 border-l-2 border-white/10 bg-white/[0.02] py-4 pl-5 pr-4">
 					<div className="relative">
 						<AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-						<input
-							value={username}
-							onChange={(e) => setUsername(e.target.value)}
-							placeholder="username"
-							className="w-full rounded-lg border border-white/15 bg-white/5 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-[#FF2D6B]"
-						/>
+						<input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username"
+							className="w-full border border-white/15 bg-white/5 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-[#FF2D6B]" />
 					</div>
-					<input
-						value={displayName}
-						onChange={(e) => setDisplayName(e.target.value)}
-						placeholder="Nome visualizzato (facoltativo)"
-						className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm outline-none transition focus:border-[#FF2D6B]"
-					/>
+					<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Nome visualizzato (facoltativo)"
+						className="w-full border border-white/15 bg-white/5 px-3 py-2.5 text-sm outline-none transition focus:border-[#FF2D6B]" />
 					{error && <p className="text-sm text-red-400">{error}</p>}
-					<button
-						disabled={saving}
-						className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#FF2D6B] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-					>
-						{saving ? "Salvo…" : "Continua"}
-						{!saving && <ArrowRight className="h-4 w-4" />}
+					<button disabled={saving}
+						className="inline-flex items-center justify-center gap-2 bg-[#FF2D6B] py-3 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-50">
+						{saving ? "Salvo…" : "Continua"} {!saving && <ArrowRight className="h-4 w-4" />}
 					</button>
 				</form>
 			</div>

@@ -23,11 +23,8 @@ export default function LoginPage() {
 		const { error: err } = await supabase.auth.signInWithPassword({ email, password })
 		setLoading(false)
 		if (err) {
-			setError(
-				err.message === "Invalid login credentials" || err.code === "invalid_credentials"
-					? "Email o password errati."
-					: err.message,
-			)
+			setError(err.message === "Invalid login credentials" || err.code === "invalid_credentials"
+				? "Email o password errati." : err.message)
 			return
 		}
 		router.push("/me")
@@ -49,48 +46,26 @@ export default function LoginPage() {
 					<p className="mt-1 text-sm text-white/40">Accedi al tuo diario dei concerti.</p>
 				</div>
 
-				<form onSubmit={handleLogin} className="flex flex-col gap-3">
+				<form onSubmit={handleLogin} className="flex flex-col gap-3 border-l-2 border-white/10 bg-white/[0.02] py-4 pl-5 pr-4">
 					<div className="relative">
 						<Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-						<input
-							type="email"
-							placeholder="Email"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							className="w-full border border-white/15 bg-white/5 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-[#FF2D6B]"
-						/>
+						<input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+							className="w-full border border-white/15 bg-white/5 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-[#FF2D6B]" />
 					</div>
 					<div className="relative">
 						<Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-						<input
-							type={showPw ? "text" : "password"}
-							placeholder="Password"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							className="w-full border border-white/15 bg-white/5 py-2.5 pl-9 pr-10 text-sm outline-none transition focus:border-[#FF2D6B]"
-						/>
-						<button
-							type="button"
-							onClick={() => setShowPw(!showPw)}
-							className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
-						>
+						<input type={showPw ? "text" : "password"} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
+							className="w-full border border-white/15 bg-white/5 py-2.5 pl-9 pr-10 text-sm outline-none transition focus:border-[#FF2D6B]" />
+						<button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
 							{showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
 						</button>
 					</div>
-
 					<div className="flex justify-end">
-						<Link href="/forgot-password" className="text-xs text-white/40 hover:text-white/70 transition">
-							Password dimenticata?
-						</Link>
+						<Link href="/forgot-password" className="text-xs text-white/40 hover:text-white/70 transition">Password dimenticata?</Link>
 					</div>
-
 					{error && <p className="text-sm text-red-400">{error}</p>}
-
-					<button
-						disabled={loading || !email.trim() || !password}
-						type="submit"
-						className="inline-flex items-center justify-center gap-2 bg-[#FF2D6B] py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
-					>
+					<button disabled={loading || !email.trim() || !password} type="submit"
+						className="inline-flex items-center justify-center gap-2 bg-[#FF2D6B] py-3 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-40">
 						{loading ? "Accesso…" : "Accedi"} {!loading && <ArrowRight className="h-4 w-4" />}
 					</button>
 				</form>
