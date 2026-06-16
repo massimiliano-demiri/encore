@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo } from "react"
+import type { CSSProperties } from "react"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -20,6 +21,15 @@ type ConcertMarker = {
 	priceMin: number | null
 	priceCurrency: string | null
 }
+
+/* Stili inline per il popup — definiti come costanti per sovrascrivere il CSS di Leaflet
+   ed evitare la doppia graffa nel JSX */
+const popupBoxStyle: CSSProperties = { width: 180 }
+const popupNameStyle: CSSProperties = { margin: 0, fontWeight: 700, fontSize: 13, lineHeight: 1.2 }
+const popupMetaStyle: CSSProperties = { margin: "4px 0 0", fontSize: 12, opacity: 0.6, display: "flex", alignItems: "center", gap: 4 }
+const popupBtnStyle: CSSProperties = { display: "block", marginTop: 8, background: "#FF2D6B", color: "#fff", textAlign: "center", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 4, textDecoration: "none" }
+const popupTicketStyle: CSSProperties = { display: "block", marginTop: 6, textAlign: "center", fontSize: 12, fontWeight: 500, color: "#7A5CFF", textDecoration: "none" }
+const popupMetaTextStyle: CSSProperties = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
 
 function createArtistIcon(imageUrl: string | null, name: string): L.DivIcon {
 	const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
@@ -95,48 +105,28 @@ export function ConcertMap({
 				scrollWheelZoom={false}
 				zoomControl={false}
 			>
-				<TileLayer
-					attribution=""
-					url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-				/>
+				<TileLayer attribution="" url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
 				<FitBounds markers={positions} userLat={userLat} userLng={userLng} />
 				{markers.map((m) => {
 					const price = fmtPrice(m.priceMin, m.priceCurrency)
 					return (
 						<Marker key={m.id} position={[m.lat, m.lng]} icon={createArtistIcon(m.artistImage, m.name)}>
 							<Popup>
-								<div className="w-[180px]">
-									{/* Nome artista */}
-																					<p className="font-bold text-sm leading-tight" style={{ margin: 0 }}>{m.name}</p>
-
-																					{/* Data · città — una sola riga compatta */}
-																					<p className="text-xs opacity-60 flex items-center gap-1 mt-1" style={{ margin: "4px 0 0" }}>
-																						<Calendar className="h-3 w-3 shrink-0" />
-																						<span className="truncate">{fmtDateShort(m.date)} · {m.city}</span>
-																					</p>
-
-																					{/* Azione primaria */}
-																					<a
-																						href={"/concert/" + m.id}
-																						className="mt-2 block w-full rounded bg-[#FF2D6B] px-3 py-1.5 text-center text-xs font-bold text-white no-underline"
-																						style={{ marginTop: 8 }}
-																					>
-																						Vedi concerto →
-																					</a>
-
-																					{/* Biglietti — azione secondaria, con prezzo se disponibile */}
-																					{m.ticketUrl && (
-																						<a
-																							href={m.ticketUrl}
-																							target="_blank"
-																							rel="noopener"
-																							className="mt-1.5 block text-center text-xs font-medium text-[#7A5CFF] hover:underline"
-																							style={{ marginTop: 6 }}
-																						>
-																							Biglietti{price ? " · " + price : ""} ↗
-																						</a>
-																					)}
-																					</div>
+								<div style={popupBoxStyle}>
+									<p style={popupNameStyle}>{m.name}</p>
+									<p style={popupMetaStyle}>
+										<Calendar className="h-3 w-3 shrink-0" />
+										<span style={popupMetaTextStyle}>{fmtDateShort(m.date)} · {m.city}</span>
+									</p>
+									<a href={"/concert/" + m.id} style={popupBtnStyle}>
+										Vedi concerto
+									</a>
+									{m.ticketUrl && (
+										<a href={m.ticketUrl} target="_blank" rel="noopener" style={popupTicketStyle}>
+											Biglietti{price ? " · " + price : ""} ↗
+										</a>
+					)}
+								</div>
 							</Popup>
 						</Marker>
 					)
@@ -151,7 +141,7 @@ export function ConcertMap({
 							iconAnchor: [7, 7],
 						})}
 					>
-						<Popup><div className="text-sm font-semibold">Sei qui</div></Popup>
+						<Popup><div style={popupNameStyle}>Sei qui</div></Popup>
 					</Marker>
 				)}
 			</MapContainer>
