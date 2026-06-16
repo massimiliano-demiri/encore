@@ -284,15 +284,21 @@ export function ArtistClient({ mbid }: { mbid: string }) {
 					</>
 				)}
 
-				{!loading && hasMore && (
-					<button
-						onClick={loadMore}
-						disabled={loadingMore}
-						className="inline-flex w-full items-center justify-center gap-2 border border-white/10 py-3 text-sm text-white/50 transition hover:text-white hover:border-white/25 disabled:opacity-40"
-					>
-						{loadingMore ? "Carico…" : "Carica altri concerti"}
-					</button>
-				)}
+				{!loading && loadingMore && (
+	<div className="flex flex-col gap-2" aria-hidden="true">
+		{[...Array(3)].map((_, i) => (
+			<div key={i} className="h-20 animate-pulse border-l-2 border-white/5 bg-white/[0.02]" />
+		))}
+	</div>
+)}
+{!loading && hasMore && !loadingMore && (
+	<button
+		onClick={loadMore}
+		className="inline-flex w-full items-center justify-center gap-2 border border-white/10 py-3 text-sm text-white/50 transition hover:text-white hover:border-white/25"
+	>
+		Carica altri concerti
+	</button>
+)}
 			</div>
 		</main>
 	)

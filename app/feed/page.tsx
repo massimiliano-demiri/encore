@@ -134,15 +134,21 @@ export default function FeedPage() {
 						))}
 					</div>
 
-					{hasMore && (
-						<button
-							onClick={loadMore}
-							disabled={loadingMore}
-							className="inline-flex w-full items-center justify-center gap-2 border border-white/10 py-3 text-sm text-white/50 transition hover:text-white hover:border-white/25 disabled:opacity-40"
-						>
-							{loadingMore ? "Carico…" : "Mostra altri"}
-						</button>
-					)}
+					{loadingMore && (
+	<div className="flex flex-col gap-3" aria-hidden="true">
+		{[...Array(3)].map((_, i) => (
+			<div key={i} className="h-24 animate-pulse border-l-2 border-white/5 bg-white/[0.02]" />
+		))}
+	</div>
+)}
+{hasMore && !loadingMore && (
+	<button
+		onClick={loadMore}
+		className="inline-flex w-full items-center justify-center gap-2 border border-white/10 py-3 text-sm text-white/50 transition hover:text-white hover:border-white/25"
+	>
+		Mostra altri
+	</button>
+)}
 				</>
 			)}
 		</main>
