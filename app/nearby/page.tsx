@@ -37,7 +37,8 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 	const R = 6371
 	const dLat = ((lat2 - lat1) * Math.PI) / 180
 	const dLng = ((lng2 - lng1) * Math.PI) / 180
-	return R * 2 * Math.atan2(Math.sqrt(Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2), Math.sqrt(1 - (Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2)))
+	const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+	return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
 async function fetchArtistImage(mbid: string | null, name: string): Promise<string | null> {
@@ -80,36 +81,46 @@ export default function NearbyPage() {
 			const sfParams = new URLSearchParams(); if (geo.city) sfParams.set("city", geo.city)
 			const tmParams = new URLSearchParams()
 			if (userLat && userLng) { tmParams.set("lat", String(userLat)); tmParams.set("lng", String(userLng)); tmParams.set("radius", String(MAX_KM)) }
-			const [sfRes, dbResult, tmRes] = await Promise.all([
+
+			const results = await Promise.allSettled([
 				fetch("/api/nearby-concerts?" + sfParams).then(r => r.ok ? r.json() : { concerts: [] }),
 				supabase.from("concerts").select("id, date, artists(name, mbid), venues(name, city, lat, lng)").order("date", { ascending: true }).limit(100),
 				fetch("/api/ticketmaster-events?" + tmParams).then(r => r.ok ? r.json() : { events: [] }),
 			])
-			const { data: dbConcerts } = dbResult
+
+			const sfRes = results[0].status === "fulfilled" ? results[0].value : { concerts: [] }
+			const dbResult = results[1].status === "fulfilled" ? results[1].value : { data: [] }
+			const tmRes = results[2].status === "fulfilled" ? results[2].value : { events: [] }
+
+			const { data: dbConcerts } = dbResult as { data: any[] | null }
+
 			const tmItems: NearbyConcert[] = ((tmRes.events ?? []) as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artistName, artistMbid: c.artistMbid, venueName: c.venueName, city: c.city, country: c.country,
-				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: c.imageUrl ?? null, source: "ticketmaster", ticketUrl: c.ticketUrl ?? null,
+				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: c.imageUrl ?? null, source: "ticketmaster" as const, ticketUrl: c.ticketUrl ?? null,
 				priceMin: c.priceMin ?? null, priceCurrency: c.priceCurrency ?? null,
 			}))
 			const sfItems: NearbyConcert[] = ((sfRes.concerts ?? []) as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artistName, artistMbid: c.artistMbid, venueName: c.venueName, city: c.city, country: c.country,
-				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: null, source: "setlistfm", ticketUrl: null, priceMin: null, priceCurrency: null,
+				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: null, source: "setlistfm" as const, ticketUrl: null, priceMin: null, priceCurrency: null,
 			}))
 			const dbItems: NearbyConcert[] = ((dbConcerts ?? []) as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artists?.name ?? "Artista", artistMbid: c.artists?.mbid ?? null,
 				venueName: c.venues?.name ?? "", city: c.venues?.city ?? "", country: "", lat: c.venues?.lat ?? null, lng: c.venues?.lng ?? null,
-				distanceKm: null, artistImage: null, source: "db", ticketUrl: null, priceMin: null, priceCurrency: null,
+				distanceKm: null, artistImage: null, source: "db" as const, ticketUrl: null, priceMin: null, priceCurrency: null,
 			}))
+
 			const seen = new Set<string>(); const merged: NearbyConcert[] = []
 			for (const c of [...tmItems, ...sfItems, ...dbItems]) {
 				const key = c.artistName + "|" + c.venueName + "|" + c.date; if (seen.has(key)) continue; seen.add(key)
 				if (c.lat && c.lng && userLat && userLng) c.distanceKm = haversineDistance(userLat, userLng, c.lat, c.lng)
 				merged.push(c)
 			}
+
 			const inRadius = (list: NearbyConcert[]) => {
 				if (!userLat || !userLng) return list
 				return list.filter(c => { if (!c.lat || !c.lng) return true; return haversineDistance(userLat, userLng, c.lat, c.lng) <= MAX_KM })
 			}
+
 			setNearbyConcerts(inRadius(merged.filter(c => c.date && c.date >= today).sort((a, b) => (a.date ?? "z").localeCompare(b.date ?? "z"))))
 			setPastConcerts(inRadius(merged.filter(c => c.date && c.date < today).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))))
 			setLoading(false)
@@ -151,7 +162,13 @@ export default function NearbyPage() {
 			rsvpCount: 0, artistImage: c.artistImage, ticketUrl: c.ticketUrl, priceMin: c.priceMin ?? null, priceCurrency: c.priceCurrency ?? null,
 		})), [nearbyConcerts])
 
-	if (loading || geo.loading) return <main className="mx-auto max-w-2xl p-6">Carico…</main>
+	if (loading || geo.loading) return (
+		<main className="mx-auto max-w-2xl p-6">
+			<div className="flex flex-col gap-3">
+				{[...Array(5)].map((_, i) => (<div key={i} className="h-20 animate-pulse border-l-2 border-white/5 bg-white/[0.02]" />))}
+			</div>
+		</main>
+	)
 
 	return (
 		<main className="mx-auto max-w-3xl px-4 pb-12 pt-6 sm:px-6 sm:pt-10">
