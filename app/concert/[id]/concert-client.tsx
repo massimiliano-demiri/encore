@@ -70,13 +70,31 @@ export function ConcertClient({ id }: { id: string }) {
 					.maybeSingle()
 
 				if (!c) {
-					const fallback = await supabase
-						.from("concerts")
-						.select("id, date, artists(name, mbid), venues(name, city)")
-						.eq("setlistfm_id", id)
-						.maybeSingle()
-					c = fallback.data
-				}
+    const fallback = await supabase
+        .from("concerts")
+        .select("id, date, artists(name, mbid), venues(name, city)")
+        .eq("setlistfm_id", id)
+        .maybeSingle()
+    c = fallback.data
+}
+
+// 3° fallback: Ticketmaster event ID → fetch + save al volo
+if (!c) {
+    try {
+        const resolveRes = await fetch("/api/resolve-concert?id=" + encodeURIComponent(id))
+        if (resolveRes.ok) {
+            const resolved = await resolveRes.json()
+            if (resolved?.concertId) {
+                const refetch = await supabase
+                    .from("concerts")
+                    .select("id, date, artists(name, mbid), venues(name, city)")
+                    .eq("id", resolved.concertId)
+                    .maybeSingle()
+                c = refetch.data
+            }
+        }
+    } catch { /* ignore */ }
+}
 
 				const concertData = (c as unknown as Concert) ?? null
 				setConcert(concertData)
