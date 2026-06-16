@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { Calendar, MapPin } from "lucide-react"
+import { Calendar } from "lucide-react"
 
 type ConcertMarker = {
 	id: string
@@ -65,8 +65,8 @@ function FitBounds({ markers, userLat, userLng }: {
 	return null
 }
 
-const fmtDate = (d: string) =>
-	new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })
+const fmtDateShort = (d: string) =>
+	new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" })
 
 const fmtPrice = (priceMin: number | null, priceCurrency: string | null): string | null => {
 	if (priceMin == null) return null
@@ -97,38 +97,50 @@ export function ConcertMap({
 			>
 				<TileLayer
 					attribution=""
-                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"				/>
+					url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+				/>
 				<FitBounds markers={positions} userLat={userLat} userLng={userLng} />
-				{markers.map((m) => (
-					<Marker key={m.id} position={[m.lat, m.lng]} icon={createArtistIcon(m.artistImage, m.name)}>
-						<Popup>
-							<div className="min-w-[160px] text-sm">
-								<p className="font-bold mb-1 text-sm">{m.name}</p>
-								<p className="text-xs flex items-center gap-1 opacity-70">
-									<MapPin className="h-3 w-3" /> {m.venue}, {m.city}
-								</p>
-								<p className="text-xs flex items-center gap-1 mt-0.5 opacity-70">
-									<Calendar className="h-3 w-3" /> {fmtDate(m.date)}
-								</p>
-								{fmtPrice(m.priceMin, m.priceCurrency) && (
-									<p className="text-xs font-semibold text-[#FFC24B] mt-1">
-										{fmtPrice(m.priceMin, m.priceCurrency)}
-									</p>
-								)}
-								<a href={"/concert/" + m.id}
-									className="mt-1.5 inline-block text-xs font-semibold text-[#FF2D6B] hover:underline">
-									Vedi concerto →
-								</a>
-								{m.ticketUrl && (
-									<a href={m.ticketUrl} target="_blank" rel="noopener"
-										className="mt-0.5 ml-2 inline-block text-xs font-semibold text-[#7A5CFF] hover:underline">
-										Biglietti ↗
-									</a>
-								)}
-							</div>
-						</Popup>
-					</Marker>
-				))}
+				{markers.map((m) => {
+					const price = fmtPrice(m.priceMin, m.priceCurrency)
+					return (
+						<Marker key={m.id} position={[m.lat, m.lng]} icon={createArtistIcon(m.artistImage, m.name)}>
+							<Popup>
+								<div className="w-[180px]">
+									{/* Nome artista */}
+																					<p className="font-bold text-sm leading-tight" style={{ margin: 0 }}>{m.name}</p>
+
+																					{/* Data · città — una sola riga compatta */}
+																					<p className="text-xs opacity-60 flex items-center gap-1 mt-1" style={{ margin: "4px 0 0" }}>
+																						<Calendar className="h-3 w-3 shrink-0" />
+																						<span className="truncate">{fmtDateShort(m.date)} · {m.city}</span>
+																					</p>
+
+																					{/* Azione primaria */}
+																					<a
+																						href={"/concert/" + m.id}
+																						className="mt-2 block w-full rounded bg-[#FF2D6B] px-3 py-1.5 text-center text-xs font-bold text-white no-underline"
+																						style={{ marginTop: 8 }}
+																					>
+																						Vedi concerto →
+																					</a>
+
+																					{/* Biglietti — azione secondaria, con prezzo se disponibile */}
+																					{m.ticketUrl && (
+																						<a
+																							href={m.ticketUrl}
+																							target="_blank"
+																							rel="noopener"
+																							className="mt-1.5 block text-center text-xs font-medium text-[#7A5CFF] hover:underline"
+																							style={{ marginTop: 6 }}
+																						>
+																							Biglietti{price ? " · " + price : ""} ↗
+																						</a>
+																					)}
+																					</div>
+							</Popup>
+						</Marker>
+					)
+				})}
 				{userLat && userLng && markers.length === 0 && (
 					<Marker
 						position={[userLat, userLng]}
