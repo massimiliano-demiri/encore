@@ -175,7 +175,7 @@ export default function ProfilePage() {
 								onChange={(e) => handleSearchChange(e.target.value)}
 								placeholder="Cerca un artista per aggiungere un concerto…"
 								autoComplete="off"
-								className="w-full border-b-2 border-white/10 bg-transparent py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-white/25 focus:border-[#FF2D6B]"
+								className="w-full border-b-2 border-white/10 bg-transparent py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-white/30 focus:border-[#FF2D6B]"
 							/>
 						</div>
 						{searchLoading && <p className="text-sm text-white/30">Cerco…</p>}

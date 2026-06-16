@@ -68,7 +68,7 @@ export default function WelcomePage() {
 						onChange={(e) => handleChange(e.target.value)}
 						placeholder="Cerca un artista… (es. Radiohead, Vasco, Coldplay)"
 						autoComplete="off"
-						className="w-full border-b-2 border-white/15 bg-transparent py-4 pl-12 pr-4 text-lg outline-none transition placeholder:text-white/20 focus:border-[#FF2D6B]"
+						className="w-full border-b-2 border-white/15 bg-transparent py-4 pl-12 pr-4 text-lg outline-none transition placeholder:text-white/30 focus:border-[#FF2D6B]"
 					/>
 				</div>
 

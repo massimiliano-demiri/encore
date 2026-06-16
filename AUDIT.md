@@ -435,8 +435,8 @@ Usa `rounded-md`, dovrebbe usare border-l-2 style.
 
 #### 4.11 Input placeholder color incoherente
 **Problema**: Placeholder color varia:
-- `placeholder:text-white/25` in [app/page.tsx](app/page.tsx)
-- `placeholder:text-white/20` in [app/welcome/page.tsx](app/welcome/page.tsx)
+- `placeholder:text-white/30` in [app/page.tsx](app/page.tsx)
+- `placeholder:text-white/30` in [app/welcome/page.tsx](app/welcome/page.tsx)
 - `placeholder:text-white/30` in [app/lists/page.tsx](app/lists/page.tsx)
 
 **Fix consigliato**: Standardizzare a `placeholder:text-white/30`

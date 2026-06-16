@@ -85,7 +85,7 @@ function SearchInner() {
 						onChange={(e) => setQ(e.target.value)}
 						onKeyDown={(e) => e.key === "Enter" && search(q)}
 						placeholder="Cerca un artista…"
-						className="w-full border-b-2 border-white/10 bg-transparent py-4 pl-12 pr-4 text-lg outline-none transition placeholder:text-white/25 focus:border-[#FF2D6B]"
+						className="w-full border-b-2 border-white/10 bg-transparent py-4 pl-12 pr-4 text-lg outline-none transition placeholder:text-white/30 focus:border-[#FF2D6B]"
 					/>
 					{q && (
 						<button
