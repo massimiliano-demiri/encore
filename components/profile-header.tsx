@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Pencil, MapPin } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { FollowButton } from "@/components/follow-button"
+import { ShareProfile } from "@/components/share-profile"
 
 type Profile = {
 	id: string
@@ -18,6 +19,20 @@ type Profile = {
 export function ProfileHeader({ profile, isOwner }: { profile: Profile; isOwner: boolean }) {
 	const supabase = createClient()
 	const [stats, setStats] = useState({ concerts: 0, followers: 0, following: 0 })
+	const [autoFollow, setAutoFollow] = useState(false)
+
+	// Deep-link "?follow=1": cattura il flag e ripulisci l'URL così un eventuale
+	// unfollow manuale + refresh non riattiva l'auto-follow.
+	useEffect(() => {
+		if (typeof window === "undefined") return
+		const sp = new URLSearchParams(window.location.search)
+		if (sp.get("follow") === "1") {
+			setAutoFollow(true)
+			sp.delete("follow")
+			const qs = sp.toString()
+			window.history.replaceState(null, "", window.location.pathname + (qs ? "?" + qs : ""))
+		}
+	}, [])
 
 	useEffect(() => {
 		const load = async () => {
@@ -55,17 +70,25 @@ export function ProfileHeader({ profile, isOwner }: { profile: Profile; isOwner:
 						</p>
 					)}
 				</div>
-				<div className="shrink-0">
+				<div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:justify-end">
 					{isOwner ? (
-						<Link href="/settings" className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-4 py-2 text-sm font-medium hover:bg-white/5">
-							<Pencil className="h-3.5 w-3.5" /> Modifica profilo
-						</Link>
+						<>
+							{profile.username && (
+								<ShareProfile username={profile.username} displayName={profile.display_name ?? undefined} />
+							)}
+							<Link href="/settings" className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-4 py-2 text-sm font-medium hover:bg-white/5">
+								<Pencil className="h-3.5 w-3.5" /> Modifica profilo
+							</Link>
+						</>
 					) : (
-						<FollowButton profileId={profile.id} />
+						<FollowButton
+							profileId={profile.id}
+							username={profile.username ?? undefined}
+							autoFollow={autoFollow}
+						/>
 					)}
 				</div>
 			</div>
-
 			<div className="mt-6 flex justify-center gap-8 border-y border-white/10 py-4 sm:justify-start">
 				<Stat value={stats.concerts} label="Concerti" />
 				<Stat
@@ -90,7 +113,6 @@ function Stat({ value, label, href }: { value: number; label: string; href?: str
 			<div className="text-xs uppercase tracking-wide text-white/50">{label}</div>
 		</div>
 	)
-
 	if (href) {
 		return (
 			<Link href={href} className="transition hover:opacity-70">
@@ -98,6 +120,5 @@ function Stat({ value, label, href }: { value: number; label: string; href?: str
 			</Link>
 		)
 	}
-
 	return content
 }

@@ -1,14 +1,19 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { Suspense, useState, useRef, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Mail, Lock, Eye, EyeOff, User, MapPin, ArrowRight, CheckCircle2 } from "lucide-react"
 
-export default function SignupPage() {
+function SignupInner() {
 	const supabase = createClient()
 	const router = useRouter()
+	const params = useSearchParams()
+	const rawNext = params.get("next")
+	const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : ""
+	const dest = next || "/welcome"
+
 	const [email, setEmail] = useState("")
 	const [password, setPassword] = useState("")
 	const [showPw, setShowPw] = useState(false)
@@ -55,7 +60,12 @@ export default function SignupPage() {
 		if (clean.length < 3) { setError("Lo username deve avere almeno 3 caratteri (lettere, numeri, . o _)."); return }
 		setError(null)
 		setLoading(true)
-		const { error: err, data } = await supabase.auth.signUp({ email, password })
+		const origin = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL ?? "")
+		const { error: err, data } = await supabase.auth.signUp({
+			email,
+			password,
+			options: { emailRedirectTo: origin + dest },
+		})
 		setLoading(false)
 		if (err) {
 			if (err.code === "user_already_exists" || err.message?.includes("already registered")) {
@@ -68,7 +78,7 @@ export default function SignupPage() {
 			await supabase.from("profiles").update({
 				username: clean, display_name: displayName.trim() || clean, city: city.trim() || null,
 			}).eq("id", data.user.id)
-			router.push("/welcome")
+			router.push(dest)
 		} else { setSent(true) }
 	}
 
@@ -91,6 +101,8 @@ export default function SignupPage() {
 		)
 	}
 
+	const loginHref = "/login" + (next ? "?next=" + encodeURIComponent(next) : "")
+
 	return (
 		<main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-6">
 			<div className="pointer-events-none absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-[#7A5CFF]/20 blur-[130px]" />
@@ -103,7 +115,6 @@ export default function SignupPage() {
 					<h2 className="text-xl font-bold [font-family:var(--font-display)]">Crea il tuo account</h2>
 					<p className="mt-1 text-sm text-white/40">Tieni il diario dei concerti a cui sei stato.</p>
 				</div>
-
 				<form onSubmit={handleSignup} className="flex flex-col gap-3 border-l-2 border-white/10 bg-white/[0.02] py-4 pl-5 pr-4">
 					<div className="relative">
 						<Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
@@ -150,12 +161,19 @@ export default function SignupPage() {
 						{loading ? "Creazione account…" : "Crea account"} {!loading && <ArrowRight className="h-4 w-4" />}
 					</button>
 				</form>
-
 				<p className="mt-4 text-center text-sm text-white/40">
 					Hai già un account?{" "}
-					<Link href="/login" className="text-[#FF2D6B] hover:underline">Accedi</Link>
+					<Link href={loginHref} className="text-[#FF2D6B] hover:underline">Accedi</Link>
 				</p>
 			</div>
 		</main>
+	)
+}
+
+export default function SignupPage() {
+	return (
+		<Suspense fallback={<main className="flex min-h-screen items-center justify-center p-6"><div className="h-10 w-40 animate-pulse rounded bg-white/5" /></main>}>
+			<SignupInner />
+		</Suspense>
 	)
 }
