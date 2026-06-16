@@ -6,7 +6,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
 import { useGeolocation } from "@/lib/use-geolocation"
-import { MapPin, Users, Navigation, Calendar, Loader2, Ticket } from "lucide-react"
+import { MapPin, Users, Navigation, Calendar, Loader2, Ticket, SlidersHorizontal, SearchX } from "lucide-react"
 
 const ConcertMap = dynamic(
 	() => import("@/components/concert-map").then((m) => ({ default: m.ConcertMap })),
@@ -24,7 +24,6 @@ type ProfileCard = {
 	userId: string; username: string; displayName: string; avatarUrl: string | null
 	bio: string | null; profileCity: string | null; venueCities: string[]; concertCount: number
 }
-
 type NearbyConcert = {
 	id: string; date: string | null; artistName: string; artistMbid: string | null
 	venueName: string; city: string; country: string; lat: number | null; lng: number | null
@@ -50,7 +49,7 @@ async function fetchArtistImage(mbid: string | null, name: string): Promise<stri
 }
 
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
-const MAX_KM = 50
+const RADIUS_OPTIONS = [20, 50, 80, 150]
 
 export default function NearbyPage() {
 	const { user } = useUser()
@@ -63,6 +62,7 @@ export default function NearbyPage() {
 	const [imagesLoaded, setImagesLoaded] = useState(false)
 	const [errors, setErrors] = useState<string[]>([])
 	const [profileCity, setProfileCity] = useState<string | null>(null)
+	const [maxKm, setMaxKm] = useState(50)
 
 	useEffect(() => {
 		if (!supabase || !user) return
@@ -74,6 +74,7 @@ export default function NearbyPage() {
 	const userCity = geo.city || profileCity
 	const userLat = geo.lat ?? null
 	const userLng = geo.lng ?? null
+	const nextRadius = RADIUS_OPTIONS.find((r) => r > maxKm) ?? null
 
 	useEffect(() => {
 		const load = async () => {
@@ -81,25 +82,21 @@ export default function NearbyPage() {
 			const today = new Date().toISOString().slice(0, 10)
 			const sfParams = new URLSearchParams(); if (geo.city) sfParams.set("city", geo.city)
 			const tmParams = new URLSearchParams()
-			if (userLat && userLng) { tmParams.set("lat", String(userLat)); tmParams.set("lng", String(userLng)); tmParams.set("radius", String(MAX_KM)) }
-
+			if (userLat && userLng) { tmParams.set("lat", String(userLat)); tmParams.set("lng", String(userLng)); tmParams.set("radius", String(maxKm)) }
 			const results = await Promise.allSettled([
 				fetch("/api/nearby-concerts?" + sfParams).then(r => r.ok ? r.json() : { concerts: [] }),
 				supabase.from("concerts").select("id, date, artists(name, mbid), venues(name, city, lat, lng)").order("date", { ascending: true }).limit(100),
 				fetch("/api/ticketmaster-events?" + tmParams).then(r => r.ok ? r.json() : { events: [] }),
 			])
 			const newErrors: string[] = []
-if (results[0].status === "rejected") newErrors.push("Setlist.fm non disponibile")
-if (results[1].status === "rejected") newErrors.push("Database non disponibile")
-if (results[2].status === "rejected") newErrors.push("Ticketmaster non disponibile")
-setErrors(newErrors)
-
+			if (results[0].status === "rejected") newErrors.push("Setlist.fm non disponibile")
+			if (results[1].status === "rejected") newErrors.push("Database non disponibile")
+			if (results[2].status === "rejected") newErrors.push("Ticketmaster non disponibile")
+			setErrors(newErrors)
 			const sfRes = results[0].status === "fulfilled" ? results[0].value : { concerts: [] }
 			const dbResult = results[1].status === "fulfilled" ? results[1].value : { data: [] }
 			const tmRes = results[2].status === "fulfilled" ? results[2].value : { events: [] }
-
 			const { data: dbConcerts } = dbResult as { data: any[] | null }
-
 			const tmItems: NearbyConcert[] = ((tmRes.events ?? []) as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artistName, artistMbid: c.artistMbid, venueName: c.venueName, city: c.city, country: c.country,
 				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: c.imageUrl ?? null, source: "ticketmaster" as const, ticketUrl: c.ticketUrl ?? null,
@@ -114,25 +111,22 @@ setErrors(newErrors)
 				venueName: c.venues?.name ?? "", city: c.venues?.city ?? "", country: "", lat: c.venues?.lat ?? null, lng: c.venues?.lng ?? null,
 				distanceKm: null, artistImage: null, source: "db" as const, ticketUrl: null, priceMin: null, priceCurrency: null,
 			}))
-
 			const seen = new Set<string>(); const merged: NearbyConcert[] = []
 			for (const c of [...tmItems, ...sfItems, ...dbItems]) {
 				const key = c.artistName + "|" + c.venueName + "|" + c.date; if (seen.has(key)) continue; seen.add(key)
 				if (c.lat && c.lng && userLat && userLng) c.distanceKm = haversineDistance(userLat, userLng, c.lat, c.lng)
 				merged.push(c)
 			}
-
 			const inRadius = (list: NearbyConcert[]) => {
 				if (!userLat || !userLng) return list
-				return list.filter(c => { if (!c.lat || !c.lng) return true; return haversineDistance(userLat, userLng, c.lat, c.lng) <= MAX_KM })
+				return list.filter(c => { if (!c.lat || !c.lng) return true; return haversineDistance(userLat, userLng, c.lat, c.lng) <= maxKm })
 			}
-
 			setNearbyConcerts(inRadius(merged.filter(c => c.date && c.date >= today).sort((a, b) => (a.date ?? "z").localeCompare(b.date ?? "z"))))
 			setPastConcerts(inRadius(merged.filter(c => c.date && c.date < today).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))))
 			setLoading(false)
 		}
 		if (!geo.loading) load()
-	}, [supabase, geo.city, geo.loading, userLat, userLng])
+	}, [supabase, geo.city, geo.loading, userLat, userLng, maxKm])
 
 	useEffect(() => {
 		if (!supabase || geo.loading) return;
@@ -183,19 +177,33 @@ setErrors(newErrors)
 					<h1 className="text-2xl font-bold [font-family:var(--font-display)]">Cosa succede vicino a te</h1>
 					{userCity ? (
 						<p className="mt-0.5 flex items-center gap-1.5 text-sm text-[#FF2D6B]">
-							<Navigation className="h-3.5 w-3.5" /> {geo.city ? "Rilevata: " + geo.city : "Città: " + userCity}{userLat && userLng && " · " + MAX_KM + "km"}
+							<Navigation className="h-3.5 w-3.5" /> {geo.city ? "Rilevata: " + geo.city : "Città: " + userCity}{userLat && userLng && " · " + maxKm + "km"}
 						</p>
 					) : (
 						<p className="mt-0.5 text-sm text-white/40">{!user ? "Accedi o concedi la geolocalizzazione." : geo.error || "Imposta la tua città nel profilo."}</p>
 					)}
 				</div>
 				{!user && <Link href="/signup" className="shrink-0 bg-[#FF2D6B] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:brightness-110">Inizia</Link>}
-				{errors.length > 0 && (
-	<div className="mb-6 border-l-2 border-[#FFC24B]/40 bg-[#FFC24B]/[0.03] py-2 pl-4 text-xs text-[#FFC24B]">
-		{errors.join(" · ")} — stiamo riprovando.
-	</div>
-)}
 			</div>
+
+			{/* Selettore raggio */}
+			{userLat && userLng && (
+				<div className="mb-6 flex items-center gap-1">
+					<SlidersHorizontal className="h-3.5 w-3.5 text-white/25 mr-1" />
+					{RADIUS_OPTIONS.map((r) => (
+						<button key={r} onClick={() => setMaxKm(r)}
+							className={`rounded px-2.5 py-1 text-[11px] font-medium transition ${maxKm === r ? "bg-[#FF2D6B]/20 text-[#FF2D6B]" : "text-white/30 hover:text-white/60"}`}>
+							{r}km
+						</button>
+					))}
+				</div>
+			)}
+
+			{errors.length > 0 && (
+				<div className="mb-6 border-l-2 border-[#FFC24B]/40 bg-[#FFC24B]/[0.03] py-2 pl-4 text-xs text-[#FFC24B]">
+					{errors.join(" · ")} — stiamo riprovando.
+				</div>
+			)}
 
 			{allMapMarkers.length > 0 ? (
 				<section className="-mx-4 mb-8 sm:-mx-6"><ConcertMap markers={allMapMarkers} userLat={userLat} userLng={userLng} /></section>
@@ -203,7 +211,7 @@ setErrors(newErrors)
 				<section className="-mx-4 mb-8 sm:-mx-6"><ConcertMap markers={[]} userLat={userLat} userLng={userLng} /></section>
 			) : null}
 
-			{nearbyConcerts.length > 0 && (
+			{nearbyConcerts.length > 0 ? (
 				<section className="mb-10">
 					<div className="mb-4 flex items-center gap-3">
 						<div className="h-px w-6 bg-[#FFC24B]/40" />
@@ -257,6 +265,50 @@ setErrors(newErrors)
 								</div>
 							)
 						})}
+					</div>
+				</section>
+			) : (
+				/* ── EMPTY / ERROR STATE ── */
+				<section className="mb-10">
+					<div className="border-l-2 border-[#FFC24B]/30 bg-white/[0.02] px-5 py-8">
+						{errors.length > 0 ? (
+							<>
+								<p className="text-sm font-semibold text-[#FFC24B]">Alcune fonti non rispondono</p>
+								<p className="mt-1 text-sm text-white/50">Stiamo riprovando a recuperare i concerti — ricarica tra qualche minuto.</p>
+							</>
+						) : (
+							<>
+								<div className="flex items-center gap-2 text-white/80">
+									<SearchX className="h-5 w-5 text-[#FFC24B]" />
+									<p className="text-lg font-bold [font-family:var(--font-display)]">
+										{userLat && userLng ? "Nessun concerto entro " + maxKm + " km" : "Nessun concerto da mostrare"}
+									</p>
+								</div>
+								<p className="mt-1.5 text-sm text-white/50">
+									{userLat && userLng
+										? "Prova ad allargare il raggio di ricerca, oppure esplora gli artisti di tendenza."
+										: user
+											? "Concedi la geolocalizzazione o imposta la tua città nel profilo per trovare concerti vicino a te."
+											: "Concedi la geolocalizzazione o accedi per scoprire i concerti nella tua zona."}
+								</p>
+								<div className="mt-4 flex flex-wrap gap-2">
+									{userLat && userLng && nextRadius && (
+										<button onClick={() => setMaxKm(nextRadius)}
+											className="inline-flex items-center gap-1.5 border border-[#FF2D6B]/40 bg-[#FF2D6B]/10 px-4 py-2 text-xs font-medium text-[#FF2D6B] transition hover:bg-[#FF2D6B]/20">
+											<SlidersHorizontal className="h-3.5 w-3.5" /> Allarga a {nextRadius} km
+										</button>
+									)}
+									{user && !userLat && (
+										<Link href="/me" className="inline-flex items-center gap-1.5 border border-white/15 px-4 py-2 text-xs font-medium text-white/60 transition hover:border-white/40 hover:text-white">
+											<MapPin className="h-3.5 w-3.5" /> Imposta città
+										</Link>
+									)}
+									<Link href="/search" className="inline-flex items-center gap-1.5 border border-white/15 px-4 py-2 text-xs font-medium text-white/60 transition hover:border-white/40 hover:text-white">
+										Esplora artisti
+									</Link>
+								</div>
+							</>
+						)}
 					</div>
 				</section>
 			)}
