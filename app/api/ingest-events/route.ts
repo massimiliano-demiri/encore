@@ -1,9 +1,22 @@
+import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
+
+export const dynamic = "force-dynamic"
+export const maxDuration = 60
+
+// ── Supabase admin (service role) ──
+function getAdmin() {
+	const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+	const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+	if (!url || !key) return null
+	return createClient(url, key, { auth: { persistSession: false } })
+}
+
 // ── Centro di Città di Castello e raggio di pertinenza ──
 const CDC_LAT = 43.4564
 const CDC_LNG = 12.2385
 const CDC_RADIUS_KM = 40
 
-// Località valide se manca il geo (fallback testuale)
 const CDC_LOCALITIES = [
 	"città di castello", "citta di castello", "san giustino", "umbertide",
 	"sansepolcro", "trestina", "selci", "lama", "citerna", "monterchi",
@@ -20,7 +33,6 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 	return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-// Pulisce il titolo evento per ricavare un "artist_name" leggibile
 function cleanTitle(name: string): string {
 	return name
 		.replace(/\s*[-–|]\s*biglietti.*$/i, "")
@@ -30,7 +42,6 @@ function cleanTitle(name: string): string {
 		.trim() || name.trim()
 }
 
-// Estrae tutti gli oggetti @type:Event dal JSON-LD (gestisce anche ItemList)
 function extractEvents(jsonLdBlocks: string[]): any[] {
 	const out: any[] = []
 	const visit = (node: any) => {
@@ -51,7 +62,7 @@ function extractEvents(jsonLdBlocks: string[]): any[] {
 
 function eventbriteId(url: string | undefined, fallback: string): string {
 	if (!url) return fallback
-	const m = url.match(/(\d{6,})(?:\?|$|\/)/) // id numerico Eventbrite
+	const m = url.match(/(\d{6,})(?:\?|$|\/)/)
 	return m ? m[1] : fallback
 }
 
@@ -65,7 +76,6 @@ async function fetchEventbrite(sourceUrl: string): Promise<any[]> {
 		},
 	})
 
-	// Cloudflare / blocco anti-bot → errore chiaro, niente silenzi
 	if (res.status === 403 || res.status === 429) {
 		throw new Error("Eventbrite ha bloccato la richiesta (anti-bot " + res.status + ")")
 	}
@@ -87,8 +97,7 @@ async function fetchEventbrite(sourceUrl: string): Promise<any[]> {
 		const lat = geo?.latitude != null ? Number(geo.latitude) : null
 		const lng = geo?.longitude != null ? Number(geo.longitude) : null
 		const addr = loc?.address
-		const city =
-			(typeof addr === "object" ? addr?.addressLocality : null) ?? null
+		const city = (typeof addr === "object" ? addr?.addressLocality : null) ?? null
 		const addressStr =
 			typeof addr === "string"
 				? addr
@@ -96,7 +105,6 @@ async function fetchEventbrite(sourceUrl: string): Promise<any[]> {
 						.filter(Boolean)
 						.join(", ") || null
 
-		// ── Filtro geografico: tieni solo ciò che è davvero vicino ──
 		let keep = false
 		if (lat != null && lng != null) {
 			keep = haversineKm(CDC_LAT, CDC_LNG, lat, lng) <= CDC_RADIUS_KM
@@ -130,8 +138,94 @@ async function fetchEventbrite(sourceUrl: string): Promise<any[]> {
 	return rows
 }
 
-// Router delle fonti — chiamato dalla route di ingest
 async function fetchSource(source: string, sourceUrl: string): Promise<any[]> {
 	if (source === "eventbrite") return fetchEventbrite(sourceUrl)
 	return []
+}
+
+// ── Geocoding (solo per righe senza coordinate) ──
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+async function geocode(query: string): Promise<{ lat: number; lng: number } | null> {
+	try {
+		const url =
+			"https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(query)
+		const res = await fetch(url, {
+			headers: { "User-Agent": "EncoreApp/1.0 (contact: m.demiri@hotmail.it)" },
+		})
+		if (!res.ok) return null
+		const data = await res.json()
+		if (!Array.isArray(data) || !data[0]) return null
+		return { lat: Number(data[0].lat), lng: Number(data[0].lon) }
+	} catch {
+		return null
+	}
+}
+
+// ── Handler: POST { source, sourceUrl } ──
+export async function POST(request: Request) {
+	const supabase = getAdmin()
+	if (!supabase) {
+		return NextResponse.json({ error: "Supabase non configurato (manca service role key)" }, { status: 500 })
+	}
+
+	let body: any
+	try {
+		body = await request.json()
+	} catch {
+		return NextResponse.json({ error: "Body JSON non valido" }, { status: 400 })
+	}
+
+	const source = body?.source
+	const sourceUrl = body?.sourceUrl
+	if (!source || !sourceUrl) {
+		return NextResponse.json({ error: "source e sourceUrl sono obbligatori" }, { status: 400 })
+	}
+
+	let rawRows: any[]
+	try {
+		rawRows = await fetchSource(source, sourceUrl)
+	} catch (err) {
+		return NextResponse.json({ error: String(err) }, { status: 502 })
+	}
+
+	if (!rawRows.length) {
+		return NextResponse.json({ ingested: 0, message: "Nessun evento trovato/pertinente" })
+	}
+
+	const rows: any[] = []
+	for (const r of rawRows) {
+		let lat = r.lat
+		let lng = r.lng
+		if ((lat == null || lng == null) && (r.venue || r.city || r.address)) {
+			const g = await geocode([r.venue, r.address, r.city, "Italia"].filter(Boolean).join(", "))
+			if (g) { lat = g.lat; lng = g.lng }
+			await sleep(1100)
+		}
+		rows.push({
+			source,
+			source_url: sourceUrl,
+			source_event_id: r.source_event_id,
+			artist_name: r.artist_name,
+			artist_mbid: r.artist_mbid ?? null,
+			venue: r.venue ?? "",
+			address: r.address ?? null,
+			city: r.city ?? null,
+			lat,
+			lng,
+			starts_at: r.starts_at,
+			ticket_url: r.ticket_url ?? null,
+			price_min: r.price_min ?? null,
+			price_currency: r.price_currency ?? null,
+			status: "pending",
+		})
+	}
+
+	const { data, error } = await supabase
+		.from("events")
+		.upsert(rows, { onConflict: "source,source_event_id" })
+		.select("id")
+
+	if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+	return NextResponse.json({ ingested: data?.length ?? rows.length })
 }
