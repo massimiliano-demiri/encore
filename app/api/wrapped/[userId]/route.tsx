@@ -223,7 +223,7 @@ export async function GET(
 				</div>
 
 				<div style={bottomStyle}>
-					encored.app/u/{((profile as any)?.username) || ""}
+					encorelive.it/u/{((profile as any)?.username) || ""}
 				</div>
 			</div>
 			<div style={wordmarkStyle}>ENCORE</div>

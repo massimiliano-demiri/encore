@@ -9,18 +9,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 // --- recensori seed (seed editoriale, non persone reali) ---
 const reviewers = [
-	{ email: "seed.marta@encored.app", username: "martagasp", displayName: "Marta Gasparini", bio: "Colleziono biglietti dal 2009.", city: "Milano" },
-	{ email: "seed.luca@encored.app", username: "lucariverbero", displayName: "Luca Bevilacqua", bio: "Post-rock e troppe casse.", city: "Bologna" },
-	{ email: "seed.elena@encored.app", username: "eledistorta", displayName: "Elena Conti", bio: "Se non fischiano le orecchie non era un concerto.", city: "Roma" },
-	{ email: "seed.davide@encored.app", username: "ildrummer", displayName: "Davide Neri", bio: "Guardo sempre il batterista.", city: "Torino" },
-	{ email: "seed.franci@encored.app", username: "francionstage", displayName: "Francesca Lo Verde", bio: "Firenze, palchi e vinili.", city: "Firenze" },
-	{ email: "seed.giulio@encored.app", username: "giuvox", displayName: "Giulio Amato", bio: "Cresciuto a pane e Pino Daniele.", city: "Napoli" },
-	{ email: "seed.sara@encored.app", username: "sarettalive", displayName: "Sara Bianchi", bio: "Arena-dipendente.", city: "Verona" },
-	{ email: "seed.matteo@encored.app", username: "matteofuzz", displayName: "Matteo Rinaldi", bio: "Chitarre e feedback.", city: "Milano" },
-	{ email: "seed.chiara@encored.app", username: "chiarawave", displayName: "Chiara De Santis", bio: "Synth, nebbia, bassi.", city: "Bari" },
-	{ email: "seed.tommaso@encored.app", username: "tommybootleg", displayName: "Tommaso Greco", bio: "Registro tutto (male).", city: "Genova" },
-	{ email: "seed.vale@encored.app", username: "valeencore", displayName: "Valentina Marchetti", bio: "Prima fila o niente.", city: "Padova" },
-	{ email: "seed.stefano@encored.app", username: "stelowfi", displayName: "Stefano Riva", bio: "Indie e pioggia.", city: "Trieste" },
+	{ email: "seed.marta@encorelive.it", username: "martagasp", displayName: "Marta Gasparini", bio: "Colleziono biglietti dal 2009.", city: "Milano" },
+	{ email: "seed.luca@encorelive.it", username: "lucariverbero", displayName: "Luca Bevilacqua", bio: "Post-rock e troppe casse.", city: "Bologna" },
+	{ email: "seed.elena@encorelive.it", username: "eledistorta", displayName: "Elena Conti", bio: "Se non fischiano le orecchie non era un concerto.", city: "Roma" },
+	{ email: "seed.davide@encorelive.it", username: "ildrummer", displayName: "Davide Neri", bio: "Guardo sempre il batterista.", city: "Torino" },
+	{ email: "seed.franci@encorelive.it", username: "francionstage", displayName: "Francesca Lo Verde", bio: "Firenze, palchi e vinili.", city: "Firenze" },
+	{ email: "seed.giulio@encorelive.it", username: "giuvox", displayName: "Giulio Amato", bio: "Cresciuto a pane e Pino Daniele.", city: "Napoli" },
+	{ email: "seed.sara@encorelive.it", username: "sarettalive", displayName: "Sara Bianchi", bio: "Arena-dipendente.", city: "Verona" },
+	{ email: "seed.matteo@encorelive.it", username: "matteofuzz", displayName: "Matteo Rinaldi", bio: "Chitarre e feedback.", city: "Milano" },
+	{ email: "seed.chiara@encorelive.it", username: "chiarawave", displayName: "Chiara De Santis", bio: "Synth, nebbia, bassi.", city: "Bari" },
+	{ email: "seed.tommaso@encorelive.it", username: "tommybootleg", displayName: "Tommaso Greco", bio: "Registro tutto (male).", city: "Genova" },
+	{ email: "seed.vale@encorelive.it", username: "valeencore", displayName: "Valentina Marchetti", bio: "Prima fila o niente.", city: "Padova" },
+	{ email: "seed.stefano@encorelive.it", username: "stelowfi", displayName: "Stefano Riva", bio: "Indie e pioggia.", city: "Trieste" },
 ]
 
 // --- concerti iconici + recensioni ---

@@ -1,7 +1,7 @@
 "use client"
-
 import dynamic from "next/dynamic"
 import { useEffect, useState, useMemo } from "react"
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { useUser } from "@/lib/use-user"
@@ -28,7 +28,7 @@ type NearbyConcert = {
 	id: string; date: string | null; artistName: string; artistMbid: string | null
 	venueName: string; city: string; country: string; lat: number | null; lng: number | null
 	distanceKm: number | null; artistImage: string | null
-	source: "setlistfm" | "db" | "ticketmaster"; ticketUrl: string | null
+	source: "setlistfm" | "db" | "ticketmaster" | "local"; ticketUrl: string | null
 	priceMin: number | null; priceCurrency: string | null
 }
 
@@ -50,6 +50,17 @@ async function fetchArtistImage(mbid: string | null, name: string): Promise<stri
 
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : ""
 const RADIUS_OPTIONS = [20, 50, 80, 150]
+
+// Link al dettaglio: gli eventi "local" non hanno una pagina /concert/, quindi
+// puntano al biglietto (se c'è) o restano testo non cliccabile.
+function ConcertDetailLink({ c, className, children }: { c: NearbyConcert; className?: string; children: ReactNode }) {
+	if (c.source === "local") {
+		return c.ticketUrl
+			? <a href={c.ticketUrl} target="_blank" rel="noopener" className={className}>{children}</a>
+			: <div className={className}>{children}</div>
+	}
+	return <Link href={"/concert/" + c.id} className={className}>{children}</Link>
+}
 
 export default function NearbyPage() {
 	const { user } = useUser()
@@ -80,23 +91,48 @@ export default function NearbyPage() {
 		const load = async () => {
 			if (!supabase) { setLoading(false); return }
 			const today = new Date().toISOString().slice(0, 10)
+			const nowIso = new Date().toISOString()
 			const sfParams = new URLSearchParams(); if (geo.city) sfParams.set("city", geo.city)
 			const tmParams = new URLSearchParams()
 			if (userLat && userLng) { tmParams.set("lat", String(userLat)); tmParams.set("lng", String(userLng)); tmParams.set("radius", String(maxKm)) }
+
+			// Query eventi locali curati (status=approved) con prefiltro bounding-box sul raggio
+			let eventsQuery = supabase
+				.from("events")
+				.select("id, artist_name, artist_mbid, venue, city, lat, lng, starts_at, ticket_url, price_min, price_currency")
+				.eq("status", "approved")
+				.gt("starts_at", nowIso)
+				.order("starts_at", { ascending: true })
+				.limit(200)
+			if (userLat && userLng) {
+				const latDelta = maxKm / 111
+				const lngDelta = maxKm / (111 * Math.cos((userLat * Math.PI) / 180))
+				eventsQuery = eventsQuery
+					.gte("lat", userLat - latDelta).lte("lat", userLat + latDelta)
+					.gte("lng", userLng - lngDelta).lte("lng", userLng + lngDelta)
+			}
+
 			const results = await Promise.allSettled([
 				fetch("/api/nearby-concerts?" + sfParams).then(r => r.ok ? r.json() : { concerts: [] }),
 				supabase.from("concerts").select("id, date, artists(name, mbid), venues(name, city, lat, lng)").order("date", { ascending: true }).limit(100),
 				fetch("/api/ticketmaster-events?" + tmParams).then(r => r.ok ? r.json() : { events: [] }),
+				eventsQuery,
 			])
+
 			const newErrors: string[] = []
 			if (results[0].status === "rejected") newErrors.push("Setlist.fm non disponibile")
 			if (results[1].status === "rejected") newErrors.push("Database non disponibile")
 			if (results[2].status === "rejected") newErrors.push("Ticketmaster non disponibile")
+			if (results[3].status === "rejected") newErrors.push("Eventi locali non disponibili")
 			setErrors(newErrors)
+
 			const sfRes = results[0].status === "fulfilled" ? results[0].value : { concerts: [] }
 			const dbResult = results[1].status === "fulfilled" ? results[1].value : { data: [] }
 			const tmRes = results[2].status === "fulfilled" ? results[2].value : { events: [] }
+			const evResult = results[3].status === "fulfilled" ? results[3].value : { data: [] }
 			const { data: dbConcerts } = dbResult as { data: any[] | null }
+			const { data: evData } = evResult as { data: any[] | null }
+
 			const tmItems: NearbyConcert[] = ((tmRes.events ?? []) as any[]).map((c: any) => ({
 				id: c.id, date: c.date, artistName: c.artistName, artistMbid: c.artistMbid, venueName: c.venueName, city: c.city, country: c.country,
 				lat: c.lat, lng: c.lng, distanceKm: null, artistImage: c.imageUrl ?? null, source: "ticketmaster" as const, ticketUrl: c.ticketUrl ?? null,
@@ -111,8 +147,16 @@ export default function NearbyPage() {
 				venueName: c.venues?.name ?? "", city: c.venues?.city ?? "", country: "", lat: c.venues?.lat ?? null, lng: c.venues?.lng ?? null,
 				distanceKm: null, artistImage: null, source: "db" as const, ticketUrl: null, priceMin: null, priceCurrency: null,
 			}))
+			const evItems: NearbyConcert[] = ((evData ?? []) as any[]).map((e: any) => ({
+				id: "ev-" + e.id, date: e.starts_at ? String(e.starts_at).slice(0, 10) : null,
+				artistName: e.artist_name ?? "Artista", artistMbid: e.artist_mbid ?? null,
+				venueName: e.venue ?? "", city: e.city ?? "", country: "", lat: e.lat ?? null, lng: e.lng ?? null,
+				distanceKm: null, artistImage: null, source: "local" as const, ticketUrl: e.ticket_url ?? null,
+				priceMin: e.price_min ?? null, priceCurrency: e.price_currency ?? null,
+			}))
+
 			const seen = new Set<string>(); const merged: NearbyConcert[] = []
-			for (const c of [...tmItems, ...sfItems, ...dbItems]) {
+			for (const c of [...tmItems, ...sfItems, ...dbItems, ...evItems]) {
 				const key = c.artistName + "|" + c.venueName + "|" + c.date; if (seen.has(key)) continue; seen.add(key)
 				if (c.lat && c.lng && userLat && userLng) c.distanceKm = haversineDistance(userLat, userLng, c.lat, c.lng)
 				merged.push(c)
@@ -157,7 +201,7 @@ export default function NearbyPage() {
 	}, [nearbyConcerts.length > 0 && !imagesLoaded])
 
 	const allMapMarkers = useMemo(() =>
-		nearbyConcerts.filter(c => c.lat && c.lng).map(c => ({
+		nearbyConcerts.filter(c => c.lat && c.lng && c.source !== "local").map(c => ({
 			id: c.id, lat: c.lat!, lng: c.lng!, name: c.artistName, venue: c.venueName, date: c.date ?? "", city: c.city,
 			rsvpCount: 0, artistImage: c.artistImage, ticketUrl: c.ticketUrl, priceMin: c.priceMin ?? null, priceCurrency: c.priceCurrency ?? null,
 		})), [nearbyConcerts])
@@ -228,16 +272,17 @@ export default function NearbyPage() {
 										<img src={c.artistImage!} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover ring-1 ring-white/10" />
 										<div className="min-w-0 flex-1">
 											<Link href={"/artist/" + (c.artistMbid || encodeURIComponent(c.artistName))} className="text-base font-bold text-white hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">{c.artistName}</Link>
-											<Link href={"/concert/" + c.id} className="block mt-1">
+											<ConcertDetailLink c={c} className="block mt-1">
 												<p className="text-sm text-white/60">{c.venueName}{c.city ? ", " + c.city : ""}</p>
 												<div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
 													<span className="text-white/40">{fmtDate(c.date)}</span>
 													{c.distanceKm && <span className="text-white/25">{Math.round(c.distanceKm)} km</span>}
 													{c.priceMin && <span className="font-semibold text-[#FFC24B]">da {c.priceMin}{c.priceCurrency === "EUR" ? "€" : " " + (c.priceCurrency ?? "")}</span>}
 												</div>
-											</Link>
+											</ConcertDetailLink>
 											<div className="mt-2 flex flex-wrap items-center gap-2">
 												{c.source === "ticketmaster" && <span className="rounded-full bg-[#FF2D6B]/15 px-2 py-0.5 text-[10px] font-medium text-[#FF2D6B]">Ticketmaster</span>}
+												{c.source === "local" && <span className="rounded-full bg-[#FFC24B]/15 px-2 py-0.5 text-[10px] font-medium text-[#FFC24B]">Locale</span>}
 												{c.ticketUrl && <a href={c.ticketUrl} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-full bg-[#7A5CFF]/15 px-2 py-0.5 text-[10px] font-medium text-[#7A5CFF] hover:bg-[#7A5CFF]/25 transition"><Ticket className="h-3 w-3" /> Biglietti</a>}
 											</div>
 										</div>
@@ -249,15 +294,16 @@ export default function NearbyPage() {
 									{c.artistImage ? <img src={c.artistImage} alt="" className="h-12 w-12 shrink-0 rounded object-cover" /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#17171F] text-white/25"><Calendar className="h-5 w-5" /></div>}
 									<div className="min-w-0 flex-1">
 										<Link href={"/artist/" + (c.artistMbid || encodeURIComponent(c.artistName))} className="text-sm font-semibold text-white hover:text-[#FFC24B] transition-colors [font-family:var(--font-display)]">{c.artistName}</Link>
-										<Link href={"/concert/" + c.id} className="block">
+										<ConcertDetailLink c={c} className="block">
 											<div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
 												<span className="text-sm text-white/50">{c.venueName}{c.city ? ", " + c.city : ""}</span>
 												<span className="text-xs text-white/35">{fmtDate(c.date)}</span>
 												{c.distanceKm && <span className="text-xs text-white/25">{Math.round(c.distanceKm)} km</span>}
 											</div>
-										</Link>
+										</ConcertDetailLink>
 										<div className="mt-1 flex flex-wrap items-center gap-2">
 											{c.source === "ticketmaster" && <span className="rounded-full bg-[#FF2D6B]/15 px-2 py-0.5 text-[10px] font-medium text-[#FF2D6B]">Ticketmaster</span>}
+											{c.source === "local" && <span className="rounded-full bg-[#FFC24B]/15 px-2 py-0.5 text-[10px] font-medium text-[#FFC24B]">Locale</span>}
 											{c.priceMin && <span className="text-xs font-medium text-[#FFC24B]">da {c.priceMin}{c.priceCurrency === "EUR" ? "€" : " " + (c.priceCurrency ?? "")}</span>}
 											{c.ticketUrl && <a href={c.ticketUrl} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-full bg-[#7A5CFF]/15 px-2 py-0.5 text-[10px] font-medium text-[#7A5CFF] hover:bg-[#7A5CFF]/25 transition"><Ticket className="h-3 w-3" /> Biglietti</a>}
 										</div>
@@ -319,10 +365,10 @@ export default function NearbyPage() {
 						<summary className="mb-3 cursor-pointer flex items-center gap-2 text-sm font-bold text-white/40 hover:text-white/70 transition"><Calendar className="h-4 w-4" /> Già passati ({pastConcerts.length})</summary>
 						<div className="flex flex-wrap gap-1.5 opacity-50">
 							{pastConcerts.slice(0, 8).map(c => (
-								<Link key={c.id} href={"/concert/" + c.id} className="inline-flex items-center gap-1.5 border border-white/5 bg-white/[0.01] px-2.5 py-1 text-xs transition hover:border-white/15">
+								<ConcertDetailLink key={c.id} c={c} className="inline-flex items-center gap-1.5 border border-white/5 bg-white/[0.01] px-2.5 py-1 text-xs transition hover:border-white/15">
 									<span className="font-semibold text-white/50 [font-family:var(--font-display)]">{c.artistName}</span>
 									<span className="text-white/25">{c.venueName}{c.city ? ", " + c.city : ""}{c.distanceKm ? " · " + Math.round(c.distanceKm) + "km" : ""}</span>
-								</Link>
+								</ConcertDetailLink>
 							))}
 						</div>
 					</details>

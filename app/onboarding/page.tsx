@@ -48,7 +48,7 @@ export default function OnboardingPage() {
 					<p className="text-xs font-semibold uppercase tracking-widest text-[#FF2D6B]">Ci siamo quasi</p>
 					<h1 className="mt-1 text-2xl font-bold [font-family:var(--font-display)]">Scegli il tuo nome utente</h1>
 					<p className="mt-2 text-sm text-white/50">
-						Ti serve per il profilo pubblico: encored.app/u/<span className="text-white">tuonome</span>
+						Ti serve per il profilo pubblico: encorelive.it/u/<span className="text-white">tuonome</span>
 					</p>
 				</div>
 

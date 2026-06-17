@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { createClient } from "@supabase/supabase-js"
 import { ProfileClient } from "./profile-client"
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://encored.app"
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://encorelive.it"
 
 function getAdmin() {
 	const url = process.env.NEXT_PUBLIC_SUPABASE_URL

@@ -204,7 +204,7 @@ export async function GET(_req: Request, context: { params: Promise<{ logId: str
 				</div>
 				<div style={bottomStyle}>
 					<div style={handleStyle}>{who}</div>
-					<div style={taglineStyle}>encored.app</div>
+					<div style={taglineStyle}>encorelive.it</div>
 				</div>
 			</div>
 		</div>,

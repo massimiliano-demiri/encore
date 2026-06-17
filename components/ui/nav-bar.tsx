@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { Home, Search, Newspaper, User, ListMusic, LogOut, LogIn, MapPin, Bell } from "lucide-react"
 import { useUser } from "@/lib/use-user"
 import { createClient } from "@/lib/supabase/client"
+import Image from "next/image"
+
 
 const desktopLinks = [
 	{ href: "/", label: "Home", Icon: Home },
@@ -60,9 +62,16 @@ export function NavBar() {
 			{/* Desktop header */}
 			<header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E0E12]/80 backdrop-blur">
 				<div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-					<Link href="/" className="text-xl font-bold [font-family:var(--font-display)]">
-						Enc<span className="text-[#FF2D6B]">o</span>re
-					</Link>
+	<Link href="/" aria-label="Encore — home" className="inline-flex items-center">
+	<Image
+		src="/wordmark.png"
+		alt="Encore"
+		width={132}
+		height={36}
+		priority
+		className="h-7 w-auto"
+	/>
+</Link>
 					<nav className="hidden items-center gap-1 sm:flex">
 						{desktopLinks.map((l) => (
 							<Link
@@ -163,4 +172,4 @@ export function NavBar() {
 			</nav>
 		</>
 	)
-}
+}	
